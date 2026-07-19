@@ -1,0 +1,67 @@
+/* Parrot live class — Component View container only.
+ * Per Zoom SDK docs, zoomAppRoot owns toolbar + main panel + screen share layout.
+ * https://marketplacefront.zoom.us/sdk/meeting/web/components/index.html
+ */
+
+.zoom-meeting-root {
+  background: #1a1a1a;
+}
+
+.zoom-meeting-stage {
+  background: #1a1a1a;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  position: relative;
+  flex: 1 1 auto;
+}
+
+/* Step 2: single container — hidden until join, then SDK renders here */
+.zoom-sdk-mount {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+  background: #1a1a1a;
+}
+
+/* Optional avatar patches when cameras are off */
+.zoom-sdk-mount [class*="video-avatar"] img,
+.zoom-sdk-mount [class*="VideoAvatar"] img,
+.zoom-sdk-mount [class*="participant-avatar"] img,
+.zoom-sdk-mount [class*="ParticipantAvatar"] img,
+.zoom-sdk-mount [class*="avatar-name"] img,
+.zoom-sdk-mount [class*="AvatarName"] img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  border-radius: 9999px !important;
+}
+
+/* Custom camera-off fallback tiles sit above SDK when all cameras off */
+.zoom-meeting-stage--fallback .zoom-sdk-mount {
+  opacity: 0.01;
+  pointer-events: none;
+}
+
+.zoom-meeting-stage--fallback .zoom-meeting-participant-tiles {
+  z-index: 10;
+}
+
+.zoom-meeting-toolbar {
+  z-index: 20;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.zoom-meeting-fullscreen {
+  height: 100dvh;
+  max-height: 100dvh;
+}
+
+@supports not (height: 100dvh) {
+  .zoom-meeting-fullscreen {
+    height: 100vh;
+    max-height: 100vh;
+  }
+}

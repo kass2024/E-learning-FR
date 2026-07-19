@@ -1,0 +1,640 @@
+<?php
+
+namespace App\Http\Controllers\Api;
+
+use App\Http\Controllers\Controller;
+use App\Mail\InstitutionPaymentReminderMail;
+use App\Models\InstitutionPromoCode;
+use App\Models\PlatformInstitution;
+use App\Models\User;
+use App\Enums\MeetingProvider;
+use App\Services\Meetings\MeetingProviderManager;
+use App\Services\Meetings\MeetingProviderStatusService;
+use App\Services\InstitutionMailResolver;
+use App\Services\InstitutionSignupService;
+use App\Services\MailDeliveryService;
+use App\Services\ZoomHostAssignmentService;
+use App\Support\PlatformInstitutionHelper;
+use App\Support\FrontendUrl;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Schema;
+
+class PlatformInstitutionController extends Controller
+{
+    public function __construct(
+        private readonly InstitutionSignupService $signupService,
+        private readonly InstitutionMailResolver $mailResolver,
+        private readonly MailDeliveryService $mailDelivery,
+        private readonly ZoomHostAssignmentService $zoomHostAssignment,
+        private readonly MeetingProviderManager $meetingProviders,
+        private readonly MeetingProviderStatusService $meetingProviderStatus,
+    ) {}
+
+    public function index()
+    {
+        if (!Schema::hasTable('platform_institutions')) {
+            return response()->json([]);
+        }
+
+        $rows = PlatformInstitution::query()
+            ->with(['owner:id,name,email,status', 'payments'])
+            ->orderByDesc('id')
+            ->get()
+            ->map(function (PlatformInstitution $inst) {
+                $paid = $inst->payments->where('status', 'paid')->sum('amount_cents');
+
+                return array_merge($inst->toAdminArray(), [
+                    'owner' => $inst->owner ? [
+                        'id' => $inst->owner->id,
+                        'name' => $inst->owner->name,
+                        'email' => $inst->owner->email,
+                        'status' => $inst->owner->status,
+                    ] : null,
+                    'total_paid_cents' => $paid,
+                    'payments_count' => $inst->payments->count(),
+                ]);
+            });
+
+        return response()->json($rows);
+    }
+
+    /**
+     * Main platform admin creates a partner institution (skips public signup / Stripe).
+     */
+    public function store(Request $request)
+    {
+        $data = $request->validate([
+            'name' => 'required|string|max:255',
+            'contact_email' => 'required|email|max:255',
+            'contact_phone' => 'nullable|string|max:50',
+            'website' => 'nullable|url|max:255',
+            'address' => 'nullable|string|max:1000',
+            'admin_notes' => 'nullable|string|max:5000',
+            'owner_name' => 'nullable|string|max:255',
+            'password' => 'nullable|string|min:8|max:100',
+            'auto_approve' => 'sometimes|boolean',
+            'send_credentials' => 'sometimes|boolean',
+        ]);
+
+        $result = $this->signupService->createByAdmin([
+            'institution_name' => $data['name'],
+            'contact_email' => $data['contact_email'],
+            'contact_phone' => $data['contact_phone'] ?? null,
+            'website' => $data['website'] ?? null,
+            'address' => $data['address'] ?? null,
+            'admin_notes' => $data['admin_notes'] ?? null,
+            'owner_name' => $data['owner_name'] ?? null,
+            'password' => $data['password'] ?? null,
+            'auto_approve' => $data['auto_approve'] ?? true,
+            'send_credentials' => $data['send_credentials'] ?? true,
+            'approved_by' => $request->input('approved_by'),
+        ]);
+
+        if (!($result['ok'] ?? false)) {
+            return response()->json(['message' => $result['message'] ?? 'Could not create institution.'], $result['status'] ?? 422);
+        }
+
+        /** @var PlatformInstitution $institution */
+        $institution = $result['institution'];
+
+        return response()->json([
+            'message' => $result['message'],
+            'institution' => $institution->fresh()->toAdminArray(),
+            'password' => $result['password'] ?? null,
+            'login_url' => $this->signupService->institutionLoginUrl($institution->fresh()),
+        ], 201);
+    }
+
+    public function context(Request $request)
+    {
+        $email = strtolower(trim((string) $request->query('email', '')));
+        if ($email === '') {
+            return response()->json(['institution' => null, 'is_main_admin' => false]);
+        }
+
+        $user = User::whereRaw('LOWER(email) = ?', [$email])->first();
+        $institution = PlatformInstitutionHelper::resolveForEmail($email);
+
+        return response()->json([
+            'institution' => PlatformInstitutionHelper::institutionPayload($institution),
+            'is_main_admin' => $user
+                ? PlatformInstitutionHelper::isMainPlatformAdmin($user)
+                : false,
+            'role' => $user?->role,
+        ]);
+    }
+
+    public function approve(PlatformInstitution $platformInstitution, Request $request)
+    {
+        $platformInstitution->status = 'active';
+        $platformInstitution->approved_at = now();
+        $platformInstitution->approved_by = $request->input('approved_by');
+        $platformInstitution->save();
+
+        try {
+            $this->signupService->ensureOwnerAccount($platformInstitution->fresh());
+        } catch (\Throwable $e) {
+            return response()->json(['message' => 'Institution approved but owner account could not be created: ' . $e->getMessage()], 500);
+        }
+
+        if ($platformInstitution->owner_user_id) {
+            $ownerStatus = $platformInstitution->payment_status === 'unpaid' ? 'Unpaid' : 'Active';
+            User::where('id', $platformInstitution->owner_user_id)->update(['status' => $ownerStatus]);
+        }
+
+        return response()->json([
+            'message' => 'Institution approved',
+            'institution' => $platformInstitution->fresh()->toPublicArray(),
+        ]);
+    }
+
+    public function disable(PlatformInstitution $platformInstitution)
+    {
+        $platformInstitution->status = 'disabled';
+        $platformInstitution->save();
+
+        User::where('platform_institution_id', $platformInstitution->id)
+            ->update(['status' => 'Inactive']);
+
+        return response()->json([
+            'message' => 'Institution disabled',
+            'institution' => $platformInstitution->fresh()->toPublicArray(),
+        ]);
+    }
+
+    public function enable(PlatformInstitution $platformInstitution)
+    {
+        $platformInstitution->status = 'active';
+        if (!$platformInstitution->approved_at) {
+            $platformInstitution->approved_at = now();
+        }
+        $platformInstitution->save();
+
+        if ($platformInstitution->owner_user_id) {
+            $ownerStatus = $platformInstitution->payment_status === 'unpaid' ? 'Unpaid' : 'Active';
+            User::where('id', $platformInstitution->owner_user_id)->update(['status' => $ownerStatus]);
+        }
+
+        return response()->json([
+            'message' => 'Institution enabled',
+            'institution' => $platformInstitution->fresh()->toPublicArray(),
+        ]);
+    }
+
+    public function assignZoomHost(PlatformInstitution $platformInstitution, Request $request)
+    {
+        $data = $request->validate([
+            'force' => 'sometimes|boolean',
+        ]);
+
+        $host = $this->zoomHostAssignment->assignHostToInstitution(
+            $platformInstitution->fresh(),
+            (bool) ($data['force'] ?? false),
+        );
+
+        if ($host === null || trim($host) === '') {
+            return response()->json([
+                'message' => 'No available Zoom host found. Add licensed users in Zoom Admin or set ZOOM_HOST_POOL.',
+                'inventory' => $this->zoomHostAssignment->getHostInventory((int) $platformInstitution->id),
+            ], 422);
+        }
+
+        return response()->json([
+            'message' => 'Zoom host assigned',
+            'zoom_host_user_id' => $host,
+            'institution' => $platformInstitution->fresh()->toAdminArray(),
+        ]);
+    }
+
+    public function backfillZoomHosts(Request $request)
+    {
+        try {
+            $dryRun = $request->boolean('dry_run');
+            $results = $this->zoomHostAssignment->backfillMissingHosts($dryRun);
+            $inventory = $this->zoomHostAssignment->getHostInventory();
+            $assignedCount = count(array_filter($results, static fn ($row) => !empty($row['assigned'])));
+
+            if (!$dryRun && $assignedCount === 0 && $results !== []) {
+                return response()->json([
+                    'message' => 'No free Zoom hosts were available for the remaining institutions. Add licensed users in Zoom Admin, or set ZOOM_HOST_POOL in server .env.',
+                    'error_code' => 'no_zoom_hosts_available',
+                    'dry_run' => $dryRun,
+                    'results' => $results,
+                    'inventory' => $inventory,
+                ], 422);
+            }
+
+            return response()->json([
+                'message' => $dryRun ? 'Preview complete' : 'Backfill complete',
+                'dry_run' => $dryRun,
+                'results' => $results,
+                'inventory' => $inventory,
+            ]);
+        } catch (\Throwable $e) {
+            report($e);
+
+            return response()->json([
+                'message' => $this->friendlyZoomBackfillError($e),
+                'error_code' => 'zoom_host_backfill_failed',
+            ], 500);
+        }
+    }
+
+    protected function friendlyZoomBackfillError(\Throwable $e): string
+    {
+        $raw = trim($e->getMessage());
+
+        if (str_contains($raw, 'Target class') || str_contains($raw, 'does not exist')) {
+            return 'Server setup issue: a required service class is missing. Run composer dump-autoload on the API server, then try again.';
+        }
+
+        if (str_contains(strtolower($raw), 'zoom') && (
+            str_contains(strtolower($raw), 'credential')
+            || str_contains(strtolower($raw), 'oauth')
+            || str_contains(strtolower($raw), 'unauthorized')
+            || str_contains(strtolower($raw), 'invalid access token')
+        )) {
+            return 'Zoom API is not configured correctly. Check ZOOM_ACCOUNT_ID, ZOOM_CLIENT_ID, and ZOOM_CLIENT_SECRET on the server.';
+        }
+
+        if (str_contains(strtolower($raw), 'user:read:list_users')) {
+            return 'Zoom app is missing the user:read:list_users:admin scope. Add it in the Zoom Marketplace app, then retry.';
+        }
+
+        return 'Could not assign Zoom hosts automatically. Verify Zoom credentials on the server and that licensed host users exist in your Zoom account.';
+    }
+
+    public function resendCredentials(PlatformInstitution $platformInstitution)
+    {
+        $result = $this->signupService->resetOwnerPassword($platformInstitution->fresh(), null, true);
+        if (!$result['ok']) {
+            return response()->json(['message' => $result['message']], $result['status'] ?? 500);
+        }
+
+        return response()->json($result);
+    }
+
+    public function resetOwnerPassword(PlatformInstitution $platformInstitution, Request $request)
+    {
+        $data = $request->validate([
+            'password' => 'nullable|string|min:8|max:128',
+            'send_email' => 'sometimes|boolean',
+        ]);
+
+        $result = $this->signupService->resetOwnerPassword(
+            $platformInstitution->fresh(),
+            $data['password'] ?? null,
+            (bool) ($data['send_email'] ?? false),
+        );
+
+        if (!$result['ok']) {
+            return response()->json(['message' => $result['message']], $result['status'] ?? 422);
+        }
+
+        return response()->json($result);
+    }
+
+    public function destroy(PlatformInstitution $platformInstitution)
+    {
+        $this->signupService->purgeInstitutionAccounts($platformInstitution);
+        $platformInstitution->payments()->delete();
+        $platformInstitution->delete();
+
+        return response()->json(['message' => 'Institution removed']);
+    }
+
+    public function sendPaymentReminder(PlatformInstitution $platformInstitution)
+    {
+        $checkout = $this->signupService->createSignupCheckout($platformInstitution);
+        if (!$checkout['ok']) {
+            return response()->json(
+                ['message' => $checkout['message'] ?? 'Could not create payment link'],
+                $checkout['status'] ?? 500
+            );
+        }
+
+        $sent = $this->mailDelivery->sendToForInstitution(
+            $platformInstitution->id,
+            $platformInstitution->contact_email,
+            new InstitutionPaymentReminderMail($platformInstitution, $checkout['checkout_url']),
+        );
+
+        if (!$sent) {
+            return response()->json(['message' => 'Failed to send payment reminder email'], 500);
+        }
+
+        return response()->json([
+            'message' => 'Payment reminder sent',
+            'checkout_url' => $checkout['checkout_url'],
+        ]);
+    }
+
+    public function show(PlatformInstitution $platformInstitution)
+    {
+        $platformInstitution->load(['owner:id,name,email,status', 'payments']);
+
+        return response()->json(array_merge($platformInstitution->toAdminArray(), [
+            'owner' => $platformInstitution->owner ? [
+                'id' => $platformInstitution->owner->id,
+                'name' => $platformInstitution->owner->name,
+                'email' => $platformInstitution->owner->email,
+                'status' => $platformInstitution->owner->status,
+            ] : null,
+            'meeting_provider_status' => $this->meetingProviderStatus->summary(),
+        ]));
+    }
+
+    public function update(PlatformInstitution $platformInstitution, Request $request)
+    {
+        $data = $request->validate([
+            'name' => 'sometimes|string|max:255',
+            'contact_email' => 'sometimes|email|max:255',
+            'contact_phone' => 'nullable|string|max:50',
+            'website' => 'nullable|url|max:255',
+            'address' => 'nullable|string|max:1000',
+            'admin_notes' => 'nullable|string|max:5000',
+            'mail_use_custom' => 'sometimes|boolean',
+            'mail_host' => 'nullable|string|max:255',
+            'mail_port' => 'nullable|integer|min:1|max:65535',
+            'mail_username' => 'nullable|string|max:255',
+            'mail_password' => 'nullable|string|max:255',
+            'mail_encryption' => 'nullable|string|in:ssl,tls,none',
+            'mail_from_address' => 'nullable|email|max:255',
+            'mail_from_name' => 'nullable|string|max:255',
+            'mail_ehlo_domain' => 'nullable|string|max:255',
+            'zoom_host_user_id' => 'nullable|string|max:255',
+            'meeting_provider' => 'sometimes|string|in:zoom,daily',
+            'portal_tagline' => 'nullable|string|max:255',
+            'portal_hero_title' => 'nullable|string|max:255',
+            'portal_hero_subtitle' => 'nullable|string|max:2000',
+            'portal_about' => 'nullable|string|max:5000',
+            'portal_primary_color' => ['nullable', 'string', 'max:16', 'regex:/^#[0-9A-Fa-f]{3}([0-9A-Fa-f]{3})?([0-9A-Fa-f]{2})?$/'],
+            'portal_accent_color' => ['nullable', 'string', 'max:16', 'regex:/^#[0-9A-Fa-f]{3}([0-9A-Fa-f]{3})?([0-9A-Fa-f]{2})?$/'],
+            'portal_hero_bg_color' => ['nullable', 'string', 'max:16', 'regex:/^#[0-9A-Fa-f]{3}([0-9A-Fa-f]{3})?([0-9A-Fa-f]{2})?$/'],
+            'portal_button_bg_color' => ['nullable', 'string', 'max:16', 'regex:/^#[0-9A-Fa-f]{3}([0-9A-Fa-f]{3})?([0-9A-Fa-f]{2})?$/'],
+            'portal_button_text_color' => ['nullable', 'string', 'max:16', 'regex:/^#[0-9A-Fa-f]{3}([0-9A-Fa-f]{3})?([0-9A-Fa-f]{2})?$/'],
+            'portal_cta_label' => 'nullable|string|max:120',
+        ]);
+
+        if (array_key_exists('mail_password', $data)) {
+            $plain = trim((string) $data['mail_password']);
+            if ($plain !== '') {
+                $data['mail_password'] = $this->mailResolver->encryptPassword($plain);
+            } else {
+                unset($data['mail_password']);
+            }
+        }
+
+        if (isset($data['mail_encryption']) && $data['mail_encryption'] === 'none') {
+            $data['mail_encryption'] = null;
+        }
+
+        if (array_key_exists('meeting_provider', $data)) {
+            // Partners inherit the main admin setting; ignore per-institution overrides.
+            unset($data['meeting_provider']);
+        }
+        // Shared Zoom settings from main admin — ignore per-institution Zoom host overrides.
+        if (array_key_exists('zoom_host_user_id', $data)) {
+            unset($data['zoom_host_user_id']);
+        }
+        if (Schema::hasColumn('platform_institutions', 'meeting_provider')) {
+            $data['meeting_provider'] = app(\App\Services\PlatformSettingsService::class)
+                ->mainPlatformMeetingProvider()
+                ->value;
+        }
+
+        $emailChanged = false;
+        $newEmail = null;
+        if (array_key_exists('contact_email', $data)) {
+            $newEmail = strtolower(trim((string) $data['contact_email']));
+            $data['contact_email'] = $newEmail;
+            $current = strtolower(trim((string) $platformInstitution->contact_email));
+            if ($newEmail !== '' && $newEmail !== $current) {
+                $conflict = User::query()
+                    ->whereRaw('LOWER(email) = ?', [$newEmail])
+                    ->when($platformInstitution->owner_user_id, fn ($q) => $q->where('id', '!=', $platformInstitution->owner_user_id))
+                    ->first();
+                if ($conflict && $this->signupService->emailIsProtected($conflict, (int) $platformInstitution->id)) {
+                    return response()->json([
+                        'message' => 'That login email is already used by another account (' . $conflict->role . ').',
+                    ], 422);
+                }
+                $instTaken = PlatformInstitution::query()
+                    ->whereRaw('LOWER(contact_email) = ?', [$newEmail])
+                    ->where('id', '!=', $platformInstitution->id)
+                    ->exists();
+                if ($instTaken) {
+                    return response()->json(['message' => 'That contact email is already used by another institution.'], 422);
+                }
+                $emailChanged = true;
+            }
+        }
+
+        // Apply non-email fields first; login email sync reclaims orphan accounts separately.
+        if ($emailChanged) {
+            unset($data['contact_email']);
+        }
+        $platformInstitution->fill($data);
+        $platformInstitution->save();
+
+        if ($emailChanged && $newEmail) {
+            try {
+                $this->signupService->syncOwnerLoginEmail($platformInstitution->fresh(), $newEmail);
+            } catch (\Throwable $e) {
+                return response()->json([
+                    'message' => 'Institution saved but login email could not be synced: ' . $e->getMessage(),
+                ], 500);
+            }
+        }
+
+        return response()->json([
+            'message' => 'Institution updated',
+            'institution' => $platformInstitution->fresh()->toAdminArray(),
+            'meeting_provider_status' => $this->meetingProviderStatus->summary(),
+        ]);
+    }
+
+    public function mySettings(Request $request)
+    {
+        $email = strtolower(trim((string) $request->query('email', '')));
+        $user = User::whereRaw('LOWER(email) = ?', [$email])->first();
+        if (!$user) {
+            return response()->json(['message' => 'User not found'], 404);
+        }
+
+        $institution = PlatformInstitutionHelper::resolveForUser($user);
+        if (!$institution) {
+            return response()->json(['message' => 'No institution linked'], 404);
+        }
+
+        return response()->json(['institution' => $institution->toPublicArray()]);
+    }
+
+    public function updateMyBranding(Request $request)
+    {
+        $data = $request->validate([
+            'email' => 'required|email',
+            'name' => 'sometimes|string|max:255',
+            'website' => 'nullable|url|max:255',
+            'address' => 'nullable|string|max:1000',
+            'meeting_provider' => 'sometimes|string|in:zoom,daily',
+            'logo' => 'nullable|file|mimes:png,jpg,jpeg,gif,webp|max:5120',
+            'portal_tagline' => 'nullable|string|max:255',
+            'portal_hero_title' => 'nullable|string|max:255',
+            'portal_hero_subtitle' => 'nullable|string|max:2000',
+            'portal_about' => 'nullable|string|max:5000',
+            'portal_primary_color' => ['nullable', 'string', 'max:16', 'regex:/^#[0-9A-Fa-f]{3}([0-9A-Fa-f]{3})?([0-9A-Fa-f]{2})?$/'],
+            'portal_accent_color' => ['nullable', 'string', 'max:16', 'regex:/^#[0-9A-Fa-f]{3}([0-9A-Fa-f]{3})?([0-9A-Fa-f]{2})?$/'],
+            'portal_hero_bg_color' => ['nullable', 'string', 'max:16', 'regex:/^#[0-9A-Fa-f]{3}([0-9A-Fa-f]{3})?([0-9A-Fa-f]{2})?$/'],
+            'portal_button_bg_color' => ['nullable', 'string', 'max:16', 'regex:/^#[0-9A-Fa-f]{3}([0-9A-Fa-f]{3})?([0-9A-Fa-f]{2})?$/'],
+            'portal_button_text_color' => ['nullable', 'string', 'max:16', 'regex:/^#[0-9A-Fa-f]{3}([0-9A-Fa-f]{3})?([0-9A-Fa-f]{2})?$/'],
+            'portal_cta_label' => 'nullable|string|max:120',
+            'portal_features' => 'nullable|json',
+            'portal_hero_image' => 'nullable|file|mimes:png,jpg,jpeg,gif,webp|max:8192',
+        ]);
+
+        $user = User::whereRaw('LOWER(email) = ?', [strtolower($data['email'])])->first();
+        if (!$user || strtolower((string) $user->role) !== 'partner_company') {
+            return response()->json(['message' => 'Partner access required'], 403);
+        }
+
+        $institution = PlatformInstitutionHelper::resolveForUser($user);
+        if (!$institution) {
+            return response()->json(['message' => 'Institution not found'], 404);
+        }
+
+        if ($request->hasFile('logo')) {
+            $path = $request->file('logo')->store('uploads', 'public');
+            $institution->logo_path = $path;
+            $institution->logo_url = asset('storage/' . $path);
+        }
+
+        if (isset($data['name'])) {
+            $institution->name = $data['name'];
+        }
+        if (array_key_exists('website', $data)) {
+            $institution->website = $data['website'];
+        }
+        if (array_key_exists('address', $data)) {
+            $institution->address = $data['address'];
+        }
+
+        if (array_key_exists('meeting_provider', $data)) {
+            // Partners inherit Settings → Live meetings from the main admin.
+            unset($data['meeting_provider']);
+        }
+        if (Schema::hasColumn('platform_institutions', 'meeting_provider')) {
+            $institution->meeting_provider = app(\App\Services\PlatformSettingsService::class)
+                ->mainPlatformMeetingProvider()
+                ->value;
+        }
+
+        foreach ([
+            'portal_tagline',
+            'portal_hero_title',
+            'portal_hero_subtitle',
+            'portal_about',
+            'portal_primary_color',
+            'portal_accent_color',
+            'portal_hero_bg_color',
+            'portal_button_bg_color',
+            'portal_button_text_color',
+            'portal_cta_label',
+        ] as $portalField) {
+            if (array_key_exists($portalField, $data)) {
+                $institution->{$portalField} = $data[$portalField] !== null && $data[$portalField] !== ''
+                    ? strtoupper(trim((string) $data[$portalField]))
+                    : null;
+                // Don't uppercase non-color portal text fields.
+                if (!str_ends_with($portalField, '_color')) {
+                    $institution->{$portalField} = $data[$portalField];
+                }
+            }
+        }
+
+        if ($request->has('portal_features')) {
+            $raw = $request->input('portal_features');
+            $decoded = is_string($raw) ? json_decode($raw, true) : $raw;
+            if (is_array($decoded)) {
+                $institution->portal_features = array_values(array_map(static function ($item) {
+                    return [
+                        'title' => (string) ($item['title'] ?? ''),
+                        'description' => (string) ($item['description'] ?? ''),
+                    ];
+                }, $decoded));
+            }
+        }
+
+        if ($request->hasFile('portal_hero_image')) {
+            $path = $request->file('portal_hero_image')->store('uploads', 'public');
+            $institution->portal_hero_image_path = $path;
+        }
+
+        $institution->save();
+
+        return response()->json([
+            'message' => 'Institution branding updated',
+            'institution' => $institution->fresh()->toPublicArray(),
+        ]);
+    }
+
+    public function sendTestMail(PlatformInstitution $platformInstitution, Request $request)
+    {
+        $to = trim((string) $request->input('to', $platformInstitution->contact_email));
+        if ($to === '') {
+            return response()->json(['message' => 'Recipient email required'], 422);
+        }
+
+        $sent = $this->mailDelivery->sendToForInstitution(
+            $platformInstitution->id,
+            $to,
+            new InstitutionPaymentReminderMail(
+                $platformInstitution,
+                FrontendUrl::base() . '/institution-signup',
+            ),
+        );
+
+        return response()->json([
+            'ok' => $sent,
+            'message' => $sent ? 'Test email sent' : 'Test email failed — check SMTP settings or platform default mail',
+        ], $sent ? 200 : 500);
+    }
+
+    public function promoCodes()
+    {
+        return response()->json(InstitutionPromoCode::orderByDesc('id')->get());
+    }
+
+    public function storePromoCode(Request $request)
+    {
+        $data = $request->validate([
+            'code' => 'required|string|max:64|unique:institution_promo_codes,code',
+            'label' => 'nullable|string|max:255',
+            'max_uses' => 'nullable|integer|min:1|max:10000',
+            'expires_at' => 'nullable|date',
+        ]);
+
+        $promo = InstitutionPromoCode::create([
+            'code' => strtoupper(trim($data['code'])),
+            'label' => $data['label'] ?? null,
+            'max_uses' => $data['max_uses'] ?? 1,
+            'created_by' => $request->input('created_by'),
+        ]);
+
+        return response()->json(['message' => 'Promo code created', 'promo_code' => $promo], 201);
+    }
+
+    public function uploadLogo(Request $request, PlatformInstitution $platformInstitution)
+    {
+        $request->validate(['logo' => 'required|file|mimes:png,jpg,jpeg,gif,webp|max:5120']);
+        $path = $request->file('logo')->store('uploads', 'public');
+        $platformInstitution->logo_path = $path;
+        $platformInstitution->logo_url = asset('storage/' . $path);
+        $platformInstitution->save();
+
+        return response()->json([
+            'message' => 'Logo updated',
+            'logo_url' => $platformInstitution->logo_url,
+        ]);
+    }
+}

@@ -1,0 +1,48 @@
+0000000000000000000000000000000000000000 5aef86160bae58c22cacadbb4d87392565185f5a methode <ujeanmethode@gmail.com> 1783030671 +0300	commit (initial): Initial commit: Xander Learning Hub backend with Zoom live class fixes.
+5aef86160bae58c22cacadbb4d87392565185f5a 0000000000000000000000000000000000000000 methode <ujeanmethode@gmail.com> 1783030721 +0300	Branch: renamed refs/heads/master to refs/heads/main
+0000000000000000000000000000000000000000 5aef86160bae58c22cacadbb4d87392565185f5a methode <ujeanmethode@gmail.com> 1783030721 +0300	Branch: renamed refs/heads/master to refs/heads/main
+5aef86160bae58c22cacadbb4d87392565185f5a 87d62c2bdd453465d4a80cb1633c4ee3a9224bdf methode <ujeanmethode@gmail.com> 1783063972 +0300	commit: E-learning st push
+87d62c2bdd453465d4a80cb1633c4ee3a9224bdf 54343e61f2d690121eaf6b44862ac24d0e0b2bb2 methode <ujeanmethode@gmail.com> 1783078491 +0300	commit: fix institution login
+54343e61f2d690121eaf6b44862ac24d0e0b2bb2 1e3377d5696c52f53fa5429b81979a1e54bcdfd3 methode <ujeanmethode@gmail.com> 1783086636 +0300	commit: fix institution login
+1e3377d5696c52f53fa5429b81979a1e54bcdfd3 05adac24abbf5b95b7d59d8d339dd6e3bcad33ff methode <ujeanmethode@gmail.com> 1783088162 +0300	commit: fix institution login
+05adac24abbf5b95b7d59d8d339dd6e3bcad33ff 7840f2b0620857a9a1de81f6bce149b79e4c5703 methode <ujeanmethode@gmail.com> 1783089216 +0300	commit: fix institution logout
+7840f2b0620857a9a1de81f6bce149b79e4c5703 68b5a5a2793a57f1d7cf83d21cbb99b6e1cb8ca1 methode <ujeanmethode@gmail.com> 1783090922 +0300	commit: fix student insert
+68b5a5a2793a57f1d7cf83d21cbb99b6e1cb8ca1 494eb168d0dc766262ef1bb7a5a3470b38965df1 methode <ujeanmethode@gmail.com> 1783093431 +0300	commit: fix student insert
+494eb168d0dc766262ef1bb7a5a3470b38965df1 1f613fbcb6af39a0f44b38eafdd604026591ecdf methode <ujeanmethode@gmail.com> 1783147223 +0300	commit: FIX QUIZ
+1f613fbcb6af39a0f44b38eafdd604026591ecdf 854ca6dfa3bab443fecab878362061da1e10facb methode <ujeanmethode@gmail.com> 1783148888 +0300	commit: FIX QUIZ
+854ca6dfa3bab443fecab878362061da1e10facb 17b067ca469994e8d1339e13fa276685d913362c methode <ujeanmethode@gmail.com> 1783151410 +0300	commit: FIX zoom
+17b067ca469994e8d1339e13fa276685d913362c 58e89a22e18ac850cf28a97d1f289caed990288a methode <ujeanmethode@gmail.com> 1783152900 +0300	commit: FIX zoom
+58e89a22e18ac850cf28a97d1f289caed990288a 8a99a2bc06a2f18511a6f2b32cd23f9ad87cdc52 methode <ujeanmethode@gmail.com> 1783154221 +0300	commit: FIX zoom
+8a99a2bc06a2f18511a6f2b32cd23f9ad87cdc52 041467817ef412acc34f107495904ac1a1021dba methode <ujeanmethode@gmail.com> 1783155231 +0300	commit: FIX zoom
+041467817ef412acc34f107495904ac1a1021dba b49469c61230e92a9fccb45e6ad7e720977435fe methode <ujeanmethode@gmail.com> 1783398844 +0300	commit: fix UIX
+b49469c61230e92a9fccb45e6ad7e720977435fe 47679379e25d7efbc31c3d1b47699c307d57a761 methode <ujeanmethode@gmail.com> 1783755696 +0300	commit: fix time zone
+47679379e25d7efbc31c3d1b47699c307d57a761 ff50e7288238e9285217049170f87d42a0006a7a methode <ujeanmethode@gmail.com> 1783787380 +0300	commit: meet fix
+ff50e7288238e9285217049170f87d42a0006a7a 8bee27eee50cc1a232623538c9d7f421cdd4918f methode <ujeanmethode@gmail.com> 1783868577 +0300	commit: fix daily zoom
+8bee27eee50cc1a232623538c9d7f421cdd4918f b4cebb01b5f47073d1e7eaadbe651459afa26db6 methode <ujeanmethode@gmail.com> 1783869127 +0300	commit: fix daily zoom
+b4cebb01b5f47073d1e7eaadbe651459afa26db6 f8b1f0f0f11a1ad3236aa7a75c7ee33827e158fe methode <ujeanmethode@gmail.com> 1783871758 +0300	commit: fix book appointment
+f8b1f0f0f11a1ad3236aa7a75c7ee33827e158fe 99d87ef4a6df11f1606542ee8ee6050e4f141864 methode <ujeanmethode@gmail.com> 1783874199 +0300	commit: fix book appointment
+99d87ef4a6df11f1606542ee8ee6050e4f141864 70361eb4b89afc0886fc94df0eec77d889bb2e43 methode <ujeanmethode@gmail.com> 1783879815 +0300	commit: insitution fix
+70361eb4b89afc0886fc94df0eec77d889bb2e43 b9485783bb97acdeba1abe4c6ceb730b49eb2357 methode <ujeanmethode@gmail.com> 1784107059 +0300	commit: Add Docker support for Linux VPS deployment (PHP-FPM, nginx, scheduler).
+b9485783bb97acdeba1abe4c6ceb730b49eb2357 f3b4319d8cca9914e5b4f4be4b0ab4c68bbd94f6 methode <ujeanmethode@gmail.com> 1784108178 +0300	commit: feat: automate VPS deploy for xanderglobalacademy.com
+f3b4319d8cca9914e5b4f4be4b0ab4c68bbd94f6 3e99816d6808b381ac1b932bf487e06c68c8076c methode <ujeanmethode@gmail.com> 1784110902 +0300	commit: fix: MySQL 8.0.35 for older CPUs and nginx server_names_hash for academy domains
+3e99816d6808b381ac1b932bf487e06c68c8076c 3d7a20249361afdc80e8c126e3c3ba13c6e6edfd methode <ujeanmethode@gmail.com> 1784264458 +0300	commit: Secure Daily token permissions and add host hand-raise moderation.
+3d7a20249361afdc80e8c126e3c3ba13c6e6edfd 621d53456f80d82e9969848b926fa4d7a11ed46f methode <ujeanmethode@gmail.com> 1784265516 +0300	commit: Add meeting engagement APIs and harden nginx against 502s.
+621d53456f80d82e9969848b926fa4d7a11ed46f 548913ebfe470b31e5bba0d2791e82eb82979e64 methode <ujeanmethode@gmail.com> 1784266295 +0300	commit: Prefer Daily as the system-wide meeting provider default.
+548913ebfe470b31e5bba0d2791e82eb82979e64 8eda5069127c4a2ba2de8965602d90c096cdae04 methode <ujeanmethode@gmail.com> 1784266764 +0300	commit: Make partner institutions inherit the main admin meeting provider.
+8eda5069127c4a2ba2de8965602d90c096cdae04 ad63eed7c4bc6d5f1580a7a999f8bc8e01629179 methode <ujeanmethode@gmail.com> 1784282942 +0300	commit: Preserve meeting_mode in list merge and accept webinar category.
+ad63eed7c4bc6d5f1580a7a999f8bc8e01629179 b7603ed56c795ab8017556b6864be979babb6df5 methode <ujeanmethode@gmail.com> 1784285413 +0300	commit: Fix Daily admin meeting and webinar host join auth.
+b7603ed56c795ab8017556b6864be979babb6df5 ddc103170ec481c3603a0107ddf1ca22d8fa4293 methode <ujeanmethode@gmail.com> 1784286491 +0300	commit: Fix invite join links to use our app domain and role permissions.
+ddc103170ec481c3603a0107ddf1ca22d8fa4293 7be81554f16f337955df4a40e70ac11ce9ce008e methode <ujeanmethode@gmail.com> 1784287775 +0300	commit: Isolate Pathways webinars and schedules per institution for parallel hosting.
+7be81554f16f337955df4a40e70ac11ce9ce008e a48102befdad9bbfb3215b4ae9e7898b57109216 methode <ujeanmethode@gmail.com> 1784294057 +0300	commit: Keep hub branding for main-platform hosts starting webinars and admin rooms
+a48102befdad9bbfb3215b4ae9e7898b57109216 b6aa313fb6751acb8e05bf62859ef2d10c8c0c0a methode <ujeanmethode@gmail.com> 1784295403 +0300	commit: Fix Daily meeting delete, host trust, and hub branding on join auth.
+b6aa313fb6751acb8e05bf62859ef2d10c8c0c0a 4bb252fb59d5fff4e2ae30558ad31201e6c7f4d9 methode <ujeanmethode@gmail.com> 1784296486 +0300	commit: Use invitation email as guest display name in join auth and invite links.
+4bb252fb59d5fff4e2ae30558ad31201e6c7f4d9 0dee6522a0d416cfa7ffd5cac90e08dd7a6d6565 methode <ujeanmethode@gmail.com> 1784296945 +0300	commit: Resolve meeting moderators from user_email so hosts can see raised hands.
+0dee6522a0d416cfa7ffd5cac90e08dd7a6d6565 98a2a642ce17a2f854b416be60343f5df7d4f5d7 methode <ujeanmethode@gmail.com> 1784298040 +0300	commit: Fix raise-hand 500 from broken meeting_key regex delimiter.
+98a2a642ce17a2f854b416be60343f5df7d4f5d7 4fc01798074e7bb66eed2b67fca9fd04440eaf8d methode <ujeanmethode@gmail.com> 1784299567 +0300	commit: Mark hub meeting/webinar join auth with use_hub_branding for guests.
+4fc01798074e7bb66eed2b67fca9fd04440eaf8d 6dc98cbc7243eacc54a525a222fb3e147dd9108b methode <ujeanmethode@gmail.com> 1784303787 +0300	commit: Convert live cohort queue to multi-admit waiting room with first-guest auto-enter.
+6dc98cbc7243eacc54a525a222fb3e147dd9108b 92c3993364e8b1963abc558cb878f73ab784490e methode <ujeanmethode@gmail.com> 1784321423 +0300	commit: Add per-participant release for live cohort host moderation.
+92c3993364e8b1963abc558cb878f73ab784490e 6a2802bebae55933a0c939c1a3ff69eff7d887c7 methode <ujeanmethode@gmail.com> 1784321947 +0300	commit: Allow admin institution create and shared Zoom host for all partners.
+6a2802bebae55933a0c939c1a3ff69eff7d887c7 e35ee11889c4ac6fd68f3f355aac7da65e63b835 methode <ujeanmethode@gmail.com> 1784323004 +0300	commit: Fix institution delete leaving emails locked by orphan user accounts.
+e35ee11889c4ac6fd68f3f355aac7da65e63b835 e5ce108ed2cf8093723cb18c6c41a9d2f2e2f51e methode <ujeanmethode@gmail.com> 1784324818 +0300	commit: Isolate meetings by institution and fix join branding for partners.
+e5ce108ed2cf8093723cb18c6c41a9d2f2e2f51e d99824232665ed6606cddf406f2a912631c382ed methode <ujeanmethode@gmail.com> 1784326511 +0300	commit: Block cross-institution and hub logins on branded institution portals.
+d99824232665ed6606cddf406f2a912631c382ed efd42d77167acc55255f80ede5d92917455a1846 methode <ujeanmethode@gmail.com> 1784327527 +0300	commit: Add institution portal theme colors for per-site branding.
