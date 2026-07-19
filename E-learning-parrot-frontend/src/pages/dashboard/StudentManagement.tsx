@@ -43,6 +43,7 @@ import { startAdminViewAs } from "@/lib/adminImpersonation";
 import { filterBySmartSearch } from "@/lib/smartSearch";
 import { formatEnrollmentShiftsSummary } from "@/lib/studyShiftUtils";
 import { EnrollmentShiftEditor } from "@/components/study-shifts/EnrollmentShiftEditor";
+import { StudyShiftPicker } from "@/components/StudyShiftPicker";
 import { EnrollmentManageActions } from "@/components/enrollments/EnrollmentManageActions";
 import { enrollmentPaymentStatusText } from "@/lib/enrollmentStatus";
 import { getInstructorEmail } from "@/lib/dashboardUser";
@@ -115,6 +116,8 @@ const StudentManagement = () => {
   const [courses, setCourses] = useState<CourseRow[]>([]);
   const [coursesLoading, setCoursesLoading] = useState(false);
   const [selectedCourseId, setSelectedCourseId] = useState<number | "">("");
+  const [enrollShiftIds, setEnrollShiftIds] = useState<number[]>([]);
+  const [enrollCourseHasShifts, setEnrollCourseHasShifts] = useState(false);
   const [enrolling, setEnrolling] = useState(false);
   const [studentEnrollments, setStudentEnrollments] = useState<StudentCourseEnrollmentRow[]>([]);
 
@@ -123,6 +126,8 @@ const StudentManagement = () => {
   const [createCoursesLoading, setCreateCoursesLoading] = useState(false);
   const [selectedCreateCourseIds, setSelectedCreateCourseIds] = useState<number[]>([]);
   const [createCourseLevels, setCreateCourseLevels] = useState<Record<number, string>>({});
+  const [createCourseShifts, setCreateCourseShifts] = useState<Record<number, number[]>>({});
+  const [createCourseHasShifts, setCreateCourseHasShifts] = useState<Record<number, boolean>>({});
 
   // Loading / modal states for per-course actions
   const [approvingCourseId, setApprovingCourseId] = useState<number | null>(null);
@@ -266,6 +271,16 @@ const StudentManagement = () => {
         const next = prev.filter((id) => id !== courseId);
         setCreateCourseLevels((levelsPrev) => {
           const copy = { ...levelsPrev };
+          delete copy[courseId];
+          return copy;
+        });
+        setCreateCourseShifts((shiftsPrev) => {
+          const copy = { ...shiftsPrev };
+          delete copy[courseId];
+          return copy;
+        });
+        setCreateCourseHasShifts((hasPrev) => {
+          const copy = { ...hasPrev };
           delete copy[courseId];
           return copy;
         });
@@ -431,6 +446,8 @@ const StudentManagement = () => {
     setPlatformInstitutionId("");
     setSelectedCreateCourseIds([]);
     setCreateCourseLevels({});
+    setCreateCourseShifts({});
+    setCreateCourseHasShifts({});
     setEditingStudent(null);
   };
 
@@ -473,6 +490,20 @@ const StudentManagement = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!editingStudent && selectedCreateCourseIds.length > 0) {
+      const missingShifts = selectedCreateCourseIds.some(
+        (id) => createCourseHasShifts[id] && !(createCourseShifts[id]?.length)
+      );
+      if (missingShifts) {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Please select at least one study shift for each selected course that has shifts.",
+          duration: 4000,
+        });
+        return;
+      }
+    }
     setSaving(true);
     // Map selected course IDs (for enrollment) to course titles (for email), including level
     const selectedCourseTitles: string[] = !editingStudent && selectedCreateCourseIds.length > 0
@@ -521,13 +552,19 @@ const StudentManagement = () => {
 
       // If this is a new student and admin selected courses, auto-enroll them
       if (!editingStudent && created && selectedCreateCourseIds.length > 0) {
-        const newId = (created as any).id as number | undefined;
+        const newId = ((created as any)?.student?.id ?? (created as any)?.id) as number | undefined;
         if (newId && Number.isFinite(newId)) {
           try {
             await Promise.all(
-              selectedCreateCourseIds.map((courseId) =>
-                enrollInCourse(courseId, newId, createCourseLevels[courseId]).catch(() => null)
-              )
+              selectedCreateCourseIds.map((courseId) => {
+                const shifts = createCourseShifts[courseId];
+                return enrollInCourse(
+                  courseId,
+                  newId,
+                  createCourseLevels[courseId],
+                  shifts?.length ? shifts : undefined
+                ).catch(() => null);
+              })
             );
             toast({
               variant: "success" as any,
@@ -597,6 +634,8 @@ const StudentManagement = () => {
       setCourses(Array.isArray(courseData) ? courseData : []);
       setStudentEnrollments(enrollmentData?.enrollments ?? []);
       setSelectedCourseId("");
+      setEnrollShiftIds([]);
+      setEnrollCourseHasShifts(false);
     } catch (error: any) {
       const message = error?.response?.data?.message || "Failed to load courses or enrollments.";
       toast({
@@ -612,9 +651,24 @@ const StudentManagement = () => {
 
   const handleEnroll = async () => {
     if (!selectedStudent?.id || !selectedCourseId) return;
+    if (enrollCourseHasShifts && enrollShiftIds.length === 0) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Please select at least one study shift for this course.",
+        duration: 4000,
+      });
+      return;
+    }
     try {
       setEnrolling(true);
-      await enrollInCourse(Number(selectedCourseId), selectedStudent.id, undefined, undefined, true);
+      await enrollInCourse(
+        Number(selectedCourseId),
+        selectedStudent.id,
+        undefined,
+        enrollShiftIds.length ? enrollShiftIds : undefined,
+        true
+      );
       toast({
         variant: "success" as any,
         title: "Enrollment successful",
@@ -623,6 +677,9 @@ const StudentManagement = () => {
       });
       const enrollmentData = await getStudentCourseEnrollments(selectedStudent.id);
       setStudentEnrollments(enrollmentData?.enrollments ?? []);
+      setSelectedCourseId("");
+      setEnrollShiftIds([]);
+      setEnrollCourseHasShifts(false);
     } catch (error: any) {
       const message = error?.response?.data?.message || "Failed to enroll student in course.";
       toast({
@@ -875,7 +932,7 @@ const StudentManagement = () => {
                   ) : createCourses.length === 0 ? (
                     <p className="text-xs text-muted-foreground">No courses available to assign.</p>
                   ) : (
-                    <div className="max-h-56 overflow-y-auto rounded-md border border-input bg-background/60 px-3 py-2 space-y-3 text-sm">
+                    <div className="max-h-96 overflow-y-auto rounded-md border border-input bg-background/60 px-3 py-2 space-y-3 text-sm">
                       {createCourses.map((course) => {
                         const id = course.id as number | undefined;
                         if (!id) return null;
@@ -931,6 +988,25 @@ const StudentManagement = () => {
                                     </button>
                                   ))}
                                 </div>
+                              </div>
+                            )}
+
+                            {isChecked && (
+                              <div className="mt-2 pl-5">
+                                <StudyShiftPicker
+                                  courseId={id}
+                                  value={createCourseShifts[id] ?? []}
+                                  platformInstitutionId={
+                                    platformInstitutionId === "" ? null : Number(platformInstitutionId)
+                                  }
+                                  ensureDefaults
+                                  onChange={(ids) =>
+                                    setCreateCourseShifts((prev) => ({ ...prev, [id]: ids }))
+                                  }
+                                  onShiftsLoaded={(hasShifts) =>
+                                    setCreateCourseHasShifts((prev) => ({ ...prev, [id]: hasShifts }))
+                                  }
+                                />
                               </div>
                             )}
                           </div>
@@ -1208,7 +1284,12 @@ const StudentManagement = () => {
                     id="course"
                     className="w-full border border-input bg-background rounded-md px-3 py-2 text-sm"
                     value={selectedCourseId}
-                    onChange={(e) => setSelectedCourseId(e.target.value ? Number(e.target.value) : "")}
+                    onChange={(e) => {
+                      const nextId = e.target.value ? Number(e.target.value) : "";
+                      setSelectedCourseId(nextId);
+                      setEnrollShiftIds([]);
+                      setEnrollCourseHasShifts(false);
+                    }}
                   >
                     <option value="">Select a course</option>
                     {courses.map((course) => (
@@ -1220,7 +1301,11 @@ const StudentManagement = () => {
                   <Button
                     type="button"
                     className="sm:w-auto w-full"
-                    disabled={!selectedCourseId || enrolling}
+                    disabled={
+                      !selectedCourseId ||
+                      enrolling ||
+                      (enrollCourseHasShifts && enrollShiftIds.length === 0)
+                    }
                     onClick={handleEnroll}
                   >
                     {enrolling ? (
@@ -1233,6 +1318,19 @@ const StudentManagement = () => {
                     )}
                   </Button>
                 </div>
+                {selectedCourseId !== "" && (
+                  <div className="rounded-md border border-border bg-muted/30 p-3">
+                    <Label className="text-xs text-muted-foreground mb-2 block">Study shift</Label>
+                    <StudyShiftPicker
+                      courseId={Number(selectedCourseId)}
+                      value={enrollShiftIds}
+                      platformInstitutionId={selectedStudent.platform_institution_id ?? null}
+                      ensureDefaults
+                      onChange={(ids) => setEnrollShiftIds(ids)}
+                      onShiftsLoaded={setEnrollCourseHasShifts}
+                    />
+                  </div>
+                )}
               </div>
 
               <div className="space-y-2">

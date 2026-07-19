@@ -19,7 +19,7 @@ class StudyShiftProvisioningService
     ];
 
     /**
-     * Shifts a learner may pick: linked via pivot, legacy course_id, or global (no courses).
+     * Shifts a learner may pick: linked via pivot, legacy course_id, or true global (no courses).
      */
     public function shiftsForCourseRegistration(Course $course, ?int $institutionId = null): Collection
     {
@@ -30,9 +30,14 @@ class StudyShiftProvisioningService
             ->withCount('enrollmentLinks')
             ->where('is_active', true)
             ->where(function ($q) use ($course, $programCourseIds) {
-                $q->whereNull('course_id')
-                    ->orWhere('course_id', $course->id)
-                    ->orWhereHas('courses', fn ($sub) => $sub->where('courses.id', $course->id));
+                // True globals: course_id null and no pivot rows
+                $q->where(function ($global) {
+                    $global->whereNull('course_id')->whereDoesntHave('courses');
+                })
+                    // Linked to this course via pivot
+                    ->orWhereHas('courses', fn ($sub) => $sub->where('courses.id', $course->id))
+                    // Legacy single-course FK
+                    ->orWhere('course_id', $course->id);
 
                 if ($programCourseIds !== []) {
                     $q->orWhereIn('course_id', $programCourseIds)
@@ -55,34 +60,88 @@ class StudyShiftProvisioningService
      */
     public function ensureDefaultsForCourse(Course $course, ?int $createdBy = null): Collection
     {
+        // Always keep hub shared Monday evening slots attached to every hub course.
+        $this->ensureSharedMondayEveningShiftsForTenant(
+            $course->platform_institution_id ? (int) $course->platform_institution_id : null,
+            $createdBy
+        );
+
         $existing = $this->shiftsForCourseRegistration($course, $course->platform_institution_id);
         if ($existing->isNotEmpty()) {
             return $existing;
         }
 
-        foreach (self::DEFAULT_TEMPLATES as $template) {
-            $shift = StudyShift::updateOrCreate(
-                [
+        return $this->shiftsForCourseRegistration($course, $course->platform_institution_id);
+    }
+
+    /**
+     * Ensure Groups 1–5 Monday evening slots exist and are attached to every course
+     * in the tenant (hub = platform_institution_id null).
+     *
+     * @return Collection<int, StudyShift>
+     */
+    public function ensureSharedMondayEveningShiftsForTenant(?int $institutionId = null, ?int $createdBy = null): Collection
+    {
+        $courseQuery = Course::query();
+        if ($institutionId === null) {
+            $courseQuery->whereNull('platform_institution_id');
+        } else {
+            $courseQuery->where('platform_institution_id', $institutionId);
+        }
+
+        $courseIds = $courseQuery->pluck('id')->map(fn ($id) => (int) $id)->all();
+        if ($courseIds === []) {
+            return collect();
+        }
+
+        // Groups 1–5 only (the Mon evening windows used for enrollment).
+        $templates = array_slice(self::DEFAULT_TEMPLATES, 0, 5);
+        $shifts = collect();
+
+        foreach ($templates as $template) {
+            $shift = StudyShift::query()
+                ->whereNull('course_id')
+                ->where('name', $template['name'])
+                ->where('day_of_week', $template['day_of_week'])
+                ->where('start_time', $template['start_time'])
+                ->where('end_time', $template['end_time'])
+                ->when(
+                    $institutionId === null,
+                    fn ($q) => $q->whereNull('platform_institution_id'),
+                    fn ($q) => $q->where('platform_institution_id', $institutionId)
+                )
+                ->first();
+
+            if (!$shift) {
+                $shift = StudyShift::query()->create([
                     'course_id' => null,
                     'name' => $template['name'],
                     'day_of_week' => $template['day_of_week'],
                     'start_time' => $template['start_time'],
                     'end_time' => $template['end_time'],
                     'timezone' => 'Africa/Kigali',
-                ],
-                [
                     'max_students' => 20,
                     'is_active' => true,
-                    'platform_institution_id' => $course->platform_institution_id,
+                    'platform_institution_id' => $institutionId,
                     'created_by' => $createdBy,
-                    'notes' => 'Default study shift for learner registration.',
-                ]
-            );
+                    'notes' => 'Shared Monday evening study shift for all courses.',
+                ]);
+            } else {
+                $shift->fill([
+                    'max_students' => $shift->max_students ?: 20,
+                    'is_active' => true,
+                    'timezone' => $shift->timezone ?: 'Africa/Kigali',
+                    'notes' => $shift->notes ?: 'Shared Monday evening study shift for all courses.',
+                ]);
+                $shift->course_id = null;
+                $shift->save();
+            }
 
-            $shift->courses()->syncWithoutDetaching([(int) $course->id]);
+            $shift->courses()->syncWithoutDetaching($courseIds);
+            $shifts->push($shift->fresh(['courses']));
         }
 
-        return $this->shiftsForCourseRegistration($course, $course->platform_institution_id);
+        return $shifts->values();
     }
 
     /**
