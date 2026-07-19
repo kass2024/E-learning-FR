@@ -3,7 +3,7 @@
 # Safe: does NOT touch /var/www DocumentRoots, Xander sites, or other Docker stacks.
 set -euo pipefail
 
-PORT="${PARROT_HTTP_PORT:-8091}"
+PORT="${PARROT_HTTP_PORT:-8093}"
 CONF="/etc/apache2/sites-available/frwanda-elearning.conf"
 
 echo "==> Existing /var/www (left unchanged):"

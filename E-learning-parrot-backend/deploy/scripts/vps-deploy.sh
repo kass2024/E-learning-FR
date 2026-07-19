@@ -9,7 +9,7 @@ DEPLOY="$(cd "$(dirname "$0")/.." && pwd)"           # deploy/
 BASE="$(cd "$ROOT/.." && pwd)"                      # /opt/e-learning-frwanda
 FRONTEND="$BASE/E-learning-parrot-frontend"
 IMPORT_DB="${IMPORT_DB:-0}"
-HTTP_PORT="${PARROT_HTTP_PORT:-8091}"
+HTTP_PORT="${PARROT_HTTP_PORT:-8093}"
 
 echo "==> Safety: never modify /var/www"
 ls /var/www >/dev/null 2>&1 && echo "    /var/www present (unchanged)" || true
