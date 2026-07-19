@@ -81,11 +81,9 @@ class InstructorDashboardController extends Controller
         }
 
         $role = strtolower(trim((string) ($user->role ?? '')));
-        if (in_array($role, ['admin', 'staff', 'partner_company'], true)) {
-            return true;
-        }
-
-        if ($role !== 'instructor') {
+        // Admins/staff/partners may view all tenant courses, but may only schedule/start
+        // live classes for courses assigned to them in Course Management.
+        if (!in_array($role, ['instructor', 'admin', 'staff', 'partner_company'], true)) {
             return false;
         }
 
@@ -358,7 +356,7 @@ class InstructorDashboardController extends Controller
             ])
             ->orderBy('title')
             ->get()
-            ->map(fn (Course $course) => $this->mapLiveClassCourse($course))
+            ->map(fn (Course $course) => $this->mapLiveClassCourse($course, $instructor))
             ->values();
 
         return response()->json(
@@ -367,8 +365,10 @@ class InstructorDashboardController extends Controller
         );
     }
 
-    private function mapLiveClassCourse(Course $course): array
+    private function mapLiveClassCourse(Course $course, ?User $actor = null): array
     {
+        $canHost = $actor ? $this->canHostCourse($actor, $course) : false;
+
         return [
             'id' => $course->id,
             'title' => $course->title,
@@ -376,6 +376,8 @@ class InstructorDashboardController extends Controller
             'status' => $course->status,
             'duration' => $course->duration,
             'paid_enrollments_count' => (int) ($course->paid_enrollments_count ?? 0),
+            'can_host' => $canHost,
+            'assigned_to_me' => $canHost,
         ];
     }
 
@@ -392,7 +394,7 @@ class InstructorDashboardController extends Controller
 
         $courses = $coursesQuery
             ->get()
-            ->map(fn (Course $course) => $this->mapLiveClassCourse($course))
+            ->map(fn (Course $course) => $this->mapLiveClassCourse($course, $actor))
             ->values();
 
         $courseIds = $courses->pluck('id');
@@ -431,11 +433,12 @@ class InstructorDashboardController extends Controller
         }
 
         $sessions = $sessions
-            ->map(function (CourseMaterial $material) use ($liveMeetingIds) {
+            ->map(function (CourseMaterial $material) use ($liveMeetingIds, $actor) {
                 $row = CourseMaterialHelper::toLiveClassArray($material, $liveMeetingIds);
                 $row['scheduled_at'] = $row['start_time']
                     ?? CourseMaterialHelper::scheduledAt($material)?->toIso8601String();
                 $row['created_at'] = $material->created_at?->toIso8601String();
+                $row['can_host'] = $this->canHostMaterial($actor, $material);
 
                 return $row;
             })
@@ -932,6 +935,7 @@ class InstructorDashboardController extends Controller
         }
 
         $details = CourseDetailsHelper::extractFromRequest($request);
+        $isPortalTeacher = InstructorLookup::isPortalTeacher($instructor);
         $payload = [
             'program_id' => $data['program_id'],
             'title' => $data['title'],
@@ -939,7 +943,8 @@ class InstructorDashboardController extends Controller
             'price' => $data['price'] ?? 0,
             'duration' => $data['duration'] ?? null,
             'requirements' => $data['requirements'] ?? null,
-            'status' => 'Pending',
+            // Main admin / staff publish immediately; regular instructors need approval.
+            'status' => $isPortalTeacher ? 'Active' : 'Pending',
         ];
         CourseDetailsHelper::applyToPayload($payload, $details, $data['title']);
 
@@ -965,7 +970,9 @@ class InstructorDashboardController extends Controller
         $instructor->assignedCourses()->syncWithoutDetaching([$course->id]);
 
         return response()->json([
-            'message' => 'Course submitted for admin approval.',
+            'message' => $isPortalTeacher
+                ? 'Course created and assigned to you.'
+                : 'Course submitted for admin approval.',
             'course' => $course,
         ], 201);
     }
@@ -988,7 +995,10 @@ class InstructorDashboardController extends Controller
         }
 
         if (!$instructor->assignedCourses()->where('courses.id', $course->id)->exists()) {
-            return response()->json(['message' => 'You are not assigned to this course.'], 403);
+            // Portal admins may edit without assignment; do not auto-assign.
+            if (!(InstructorLookup::isPortalTeacher($instructor) && $this->canHostCourse($instructor, $course))) {
+                return response()->json(['message' => 'You are not assigned to this course.'], 403);
+            }
         }
 
         $details = CourseDetailsHelper::extractFromRequest($request);
@@ -1025,7 +1035,9 @@ class InstructorDashboardController extends Controller
         }
 
         if (!$instructor->assignedCourses()->where('courses.id', $course->id)->exists()) {
-            return response()->json(['message' => 'You are not assigned to this course.'], 403);
+            if (!(InstructorLookup::isPortalTeacher($instructor) && $this->canHostCourse($instructor, $course))) {
+                return response()->json(['message' => 'You are not assigned to this course.'], 403);
+            }
         }
 
         if ($course->enrollments()->exists()) {
@@ -1184,7 +1196,11 @@ class InstructorDashboardController extends Controller
 
         $assigned = $instructor->assignedCourses()->where('courses.id', $data['course_id'])->exists();
         if (!$assigned) {
-            return response()->json(['message' => 'You are not assigned to this course.'], 403);
+            $course = Course::query()->find($data['course_id']);
+            // Portal admins may manage quizzes without assignment; do not auto-assign.
+            if (!(InstructorLookup::isPortalTeacher($instructor) && $this->canHostCourse($instructor, $course))) {
+                return response()->json(['message' => 'You are not assigned to this course.'], 403);
+            }
         }
 
         $quiz = CourseMaterial::create([

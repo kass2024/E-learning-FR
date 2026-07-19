@@ -1962,6 +1962,12 @@ export type CoursePayload = {
   requirements?: string | null;
   image?: string | null;
   status?: string | null;
+  instructors?: Array<{
+    id: number;
+    name?: string | null;
+    email?: string | null;
+    role?: string | null;
+  }> | null;
 };
 
 export const suggestCourseCode = async (title?: string, prefix?: string) => {
@@ -2655,6 +2661,7 @@ export type InstructorLiveClassSession = {
   is_upcoming?: boolean;
   is_live_now?: boolean;
   duration_minutes?: number;
+  can_host?: boolean;
 };
 
 export type InstructorLiveClassesData = {
@@ -2667,6 +2674,8 @@ export type InstructorLiveClassesData = {
     status?: string;
     duration?: string;
     paid_enrollments_count?: number;
+    can_host?: boolean;
+    assigned_to_me?: boolean;
   }>;
   sessions: InstructorLiveClassSession[];
 };

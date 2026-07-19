@@ -59,7 +59,10 @@ class CourseController extends Controller
             . ($programId ? '_program_' . $programId : '_all');
 
         $courses = ApiListCache::remember('courses', $cacheKey, 120, function () use ($request, $programId) {
-            $query = Course::with('program:id,name')->orderByDesc('id');
+            $query = Course::with([
+                'program:id,name',
+                'instructors:id,name,email,role',
+            ])->orderByDesc('id');
             PlatformTenantScope::applyToQuery($query, $request);
 
             if ($programId) {
@@ -125,8 +128,8 @@ class CourseController extends Controller
         $this->bumpCourseCaches();
 
         return response()->json([
-            'message' => 'Course created. Assign an instructor from Courses or Instructor Management when ready.',
-            'course' => $course->load('instructors:id,name,email'),
+            'message' => 'Course created. Use Assign to link a teacher when ready.',
+            'course' => $course->load('instructors:id,name,email,role'),
         ], 201);
     }
 
@@ -188,16 +191,16 @@ class CourseController extends Controller
 
         $user = User::findOrFail($data['user_id']);
 
-        if ($user->role !== 'instructor') {
+        if (!InstructorLookup::isTeachable($user)) {
             return response()->json([
-                'message' => 'Selected user is not an instructor.',
+                'message' => 'Selected user cannot be assigned as a course teacher.',
             ], 422);
         }
 
         $tenantId = PlatformTenantScope::resolvePartnerTenantId($request);
         if ($tenantId !== null && (int) $user->platform_institution_id !== (int) $tenantId) {
             return response()->json([
-                'message' => 'Instructor must belong to your institution.',
+                'message' => 'Teacher must belong to your institution.',
             ], 422);
         }
 
@@ -206,7 +209,7 @@ class CourseController extends Controller
         $this->bumpCourseCaches();
 
         return response()->json([
-            'message' => 'Course assigned to instructor',
+            'message' => 'Course assigned to teacher',
         ]);
     }
 
@@ -220,9 +223,9 @@ class CourseController extends Controller
 
         $user = User::findOrFail($data['user_id']);
 
-        if ($user->role !== 'instructor') {
+        if (!InstructorLookup::isTeachable($user)) {
             return response()->json([
-                'message' => 'Selected user is not an instructor.',
+                'message' => 'Selected user is not a course teacher.',
             ], 422);
         }
 
@@ -420,9 +423,10 @@ class CourseController extends Controller
                 return response()->json(['message' => 'Instructor not found.'], 404);
             }
 
-            if (!$instructor->assignedCourses()->where('courses.id', $course->id)->exists()) {
+            $isAssigned = $instructor->assignedCourses()->where('courses.id', $course->id)->exists();
+            if (!$isAssigned) {
                 return response()->json([
-                    'message' => 'You are not assigned to this course. Ask an administrator to assign it in Course Management.',
+                    'message' => 'You are not assigned to this course. Assign it to yourself in Course Management before scheduling a live class.',
                 ], 403);
             }
         }
