@@ -270,7 +270,7 @@ const MeetingRegistration = () => {
   const inputClass = (invalid?: boolean) =>
     cn(
       "h-11 rounded-xl border bg-white text-slate-900 placeholder:text-slate-400",
-      "transition-all duration-200 focus-visible:ring-2 focus-visible:ring-[#0070D0]/20 focus-visible:border-[#0070D0]",
+      "transition-all duration-200 focus-visible:ring-2 focus-visible:ring-[#1F8A4C]/20 focus-visible:border-[#1F8A4C]",
       invalid ? "border-red-300 focus-visible:ring-red-200" : "border-slate-200 hover:border-slate-300"
     );
 
@@ -559,22 +559,22 @@ const MeetingRegistration = () => {
             animate={{ opacity: 1, y: 0 }}
             className="text-center mb-8"
           >
-            <Badge className="mb-4 bg-[#0070D0]/8 text-[#0070D0] border-[#0070D0]/15 hover:bg-[#0070D0]/10">
+            <Badge className="mb-4 bg-[#1F8A4C]/8 text-[#1F8A4C] border-[#1F8A4C]/15 hover:bg-[#1F8A4C]/10">
               <Video className="h-3.5 w-3.5 mr-1.5" />
               Book a session
             </Badge>
-            <h1 className="text-3xl md:text-4xl font-bold text-[#0070D0] mb-2">Book meeting with us</h1>
+            <h1 className="text-3xl md:text-4xl font-bold text-[#1F8A4C] mb-2">Book meeting with us</h1>
             <p className="text-slate-600 max-w-2xl mx-auto">
               Choose a time, share your details, and we will email you a confirmation with your secure online meeting link.
             </p>
 
             <div className="mt-8 flex items-center justify-center gap-2 sm:gap-4">
-              <div className={cn("flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold uppercase tracking-wider transition-colors", step === 1 ? "bg-[#0070D0] text-white shadow-md shadow-[#0070D0]/20" : "bg-white text-slate-500 border border-slate-200")}>
+              <div className={cn("flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold uppercase tracking-wider transition-colors", step === 1 ? "bg-[#1F8A4C] text-white shadow-md shadow-[#1F8A4C]/20" : "bg-white text-slate-500 border border-slate-200")}>
                 <span className="flex h-5 w-5 items-center justify-center rounded-full bg-white/20 text-[10px]">1</span>
                 Choose time
               </div>
               <div className="h-px w-8 sm:w-12 bg-slate-200" />
-              <div className={cn("flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold uppercase tracking-wider transition-colors", step === 2 ? "bg-[#0070D0] text-white shadow-md shadow-[#0070D0]/20" : "bg-white text-slate-500 border border-slate-200")}>
+              <div className={cn("flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold uppercase tracking-wider transition-colors", step === 2 ? "bg-[#1F8A4C] text-white shadow-md shadow-[#1F8A4C]/20" : "bg-white text-slate-500 border border-slate-200")}>
                 <span className="flex h-5 w-5 items-center justify-center rounded-full bg-white/20 text-[10px]">2</span>
                 Your info
               </div>
@@ -609,7 +609,7 @@ const MeetingRegistration = () => {
                   "Get email reminders before your session",
                 ].map((text) => (
                   <li key={text} className="flex items-start gap-2 text-sm text-slate-600">
-                    <CheckCircle2 className="h-4 w-4 text-[#FCC400] shrink-0 mt-0.5" />
+                    <CheckCircle2 className="h-4 w-4 text-[#1F8A4C] shrink-0 mt-0.5" />
                     {text}
                   </li>
                 ))}
@@ -618,29 +618,29 @@ const MeetingRegistration = () => {
           ) : (
             <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
               <Card className="rounded-3xl border border-slate-200/80 bg-white shadow-xl shadow-slate-200/50 overflow-hidden">
-                <div className="h-1 bg-gradient-to-r from-[#0070D0] via-[#FCC400] to-[#0070D0]" />
+                <div className="h-1 bg-gradient-to-r from-[#1F8A4C] via-[#1F8A4C] to-[#1F8A4C]" />
 
                 <CardHeader className="pb-4 pt-8 px-6 md:px-8">
-                  <CardTitle className="text-xl font-bold text-[#0070D0]">Your information</CardTitle>
+                  <CardTitle className="text-xl font-bold text-[#1F8A4C]">Your information</CardTitle>
                   {selectedSlot && learnerTimezone && (
-                    <div className="mt-4 rounded-2xl border border-[#0070D0]/10 bg-gradient-to-br from-[#0070D0]/5 to-white p-4">
+                    <div className="mt-4 rounded-2xl border border-[#1F8A4C]/10 bg-gradient-to-br from-[#1F8A4C]/5 to-white p-4">
                       <div className="flex gap-3">
-                        <div className="shrink-0 rounded-xl border border-[#0070D0]/15 bg-white px-2.5 py-2 text-center min-w-[52px] shadow-sm">
-                          <CalendarDays className="h-4 w-4 text-[#0070D0] mx-auto" />
+                        <div className="shrink-0 rounded-xl border border-[#1F8A4C]/15 bg-white px-2.5 py-2 text-center min-w-[52px] shadow-sm">
+                          <CalendarDays className="h-4 w-4 text-[#1F8A4C] mx-auto" />
                         </div>
                         <div className="min-w-0 flex-1">
-                          <p className="text-sm font-semibold text-[#0070D0] leading-snug">
+                          <p className="text-sm font-semibold text-[#1F8A4C] leading-snug">
                             {formatSelectedMeeting(selectedSlot.startsAt, learnerTimezone)}
                             <button
                               type="button"
                               onClick={() => setStep(1)}
-                              className="ml-2 text-[#FCC400] hover:underline font-semibold"
+                              className="ml-2 text-[#1F8A4C] hover:underline font-semibold"
                             >
                               Edit
                             </button>
                           </p>
                           <p className="mt-1.5 flex items-center gap-2 text-xs text-slate-600">
-                            <Video className="h-3.5 w-3.5 text-[#0070D0]" />
+                            <Video className="h-3.5 w-3.5 text-[#1F8A4C]" />
                             Zoom (online) · {timezoneDisplayLabel(learnerTimezone)}
                           </p>
                         </div>
@@ -648,7 +648,7 @@ const MeetingRegistration = () => {
                     </div>
                   )}
                   <CardDescription className="text-slate-500 mt-3">
-                    Fields marked with <span className="text-[#FCC400]">*</span> are required.
+                    Fields marked with <span className="text-[#1F8A4C]">*</span> are required.
                   </CardDescription>
                 </CardHeader>
 
@@ -656,14 +656,14 @@ const MeetingRegistration = () => {
                   <form className="space-y-8" onSubmit={handleSubmit}>
                     <section className="space-y-4">
                       <div className="flex items-center gap-2 pb-1 border-b border-slate-100">
-                        <User className="h-4 w-4 text-[#0070D0]" />
-                        <h3 className="text-sm font-semibold text-[#0070D0] uppercase tracking-wide">Your details</h3>
+                        <User className="h-4 w-4 text-[#1F8A4C]" />
+                        <h3 className="text-sm font-semibold text-[#1F8A4C] uppercase tracking-wide">Your details</h3>
                       </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-1.5">
                           <Label htmlFor="fullName" className="text-slate-700">
-                            Full name <span className="text-[#FCC400]">*</span>
+                            Full name <span className="text-[#1F8A4C]">*</span>
                           </Label>
                           <div className="relative">
                             <User className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
@@ -681,7 +681,7 @@ const MeetingRegistration = () => {
 
                         <div className="space-y-1.5">
                           <Label htmlFor="email" className="text-slate-700">
-                            Email <span className="text-[#FCC400]">*</span>
+                            Email <span className="text-[#1F8A4C]">*</span>
                           </Label>
                           <div className="relative">
                             <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
@@ -700,7 +700,7 @@ const MeetingRegistration = () => {
 
                         <div className="space-y-1.5 md:col-span-2">
                           <Label htmlFor="phone" className="text-slate-700">
-                            Phone <span className="text-[#FCC400]">*</span>
+                            Phone <span className="text-[#1F8A4C]">*</span>
                           </Label>
                           <div className="relative">
                             <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
@@ -721,9 +721,9 @@ const MeetingRegistration = () => {
 
                     <section className="space-y-4">
                       <div className="flex items-center gap-2 pb-1 border-b border-slate-100">
-                        <MessageSquare className="h-4 w-4 text-[#0070D0]" />
-                        <h3 className="text-sm font-semibold text-[#0070D0] uppercase tracking-wide">
-                          Reason for booking <span className="text-[#FCC400]">*</span>
+                        <MessageSquare className="h-4 w-4 text-[#1F8A4C]" />
+                        <h3 className="text-sm font-semibold text-[#1F8A4C] uppercase tracking-wide">
+                          Reason for booking <span className="text-[#1F8A4C]">*</span>
                         </h3>
                       </div>
 
@@ -738,7 +738,7 @@ const MeetingRegistration = () => {
                               className={cn(
                                 "rounded-xl border px-4 py-3 text-sm font-semibold transition-all text-left",
                                 active
-                                  ? "border-[#0070D0] bg-[#0070D0]/5 text-[#0070D0] shadow-sm"
+                                  ? "border-[#1F8A4C] bg-[#1F8A4C]/5 text-[#1F8A4C] shadow-sm"
                                   : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
                               )}
                             >
@@ -746,10 +746,10 @@ const MeetingRegistration = () => {
                                 <span
                                   className={cn(
                                     "flex h-4 w-4 items-center justify-center rounded-full border",
-                                    active ? "border-[#0070D0]" : "border-slate-300"
+                                    active ? "border-[#1F8A4C]" : "border-slate-300"
                                   )}
                                 >
-                                  {active && <span className="h-2 w-2 rounded-full bg-[#0070D0]" />}
+                                  {active && <span className="h-2 w-2 rounded-full bg-[#1F8A4C]" />}
                                 </span>
                                 {reason.label}
                               </span>
@@ -779,7 +779,7 @@ const MeetingRegistration = () => {
                           id="agree"
                           checked={agree}
                           onCheckedChange={(checked) => setAgree(Boolean(checked))}
-                          className="mt-0.5 data-[state=checked]:bg-[#0070D0] data-[state=checked]:border-[#0070D0]"
+                          className="mt-0.5 data-[state=checked]:bg-[#1F8A4C] data-[state=checked]:border-[#1F8A4C]"
                         />
                         <div className="space-y-1">
                           <Label htmlFor="agree" className="text-sm text-slate-700 leading-relaxed cursor-pointer">
@@ -797,7 +797,7 @@ const MeetingRegistration = () => {
                         type="button"
                         variant="outline"
                         onClick={() => setStep(1)}
-                        className="rounded-full border-[#0070D0] text-[#0070D0] hover:bg-[#0070D0]/5"
+                        className="rounded-full border-[#1F8A4C] text-[#1F8A4C] hover:bg-[#1F8A4C]/5"
                       >
                         <ChevronLeft className="h-4 w-4 mr-1" />
                         Back
@@ -805,7 +805,7 @@ const MeetingRegistration = () => {
                       <Button
                         type="submit"
                         disabled={submitting}
-                        className="rounded-full bg-[#0070D0] hover:bg-[#0058A8] text-white font-semibold px-8 h-12 shadow-lg shadow-[#0070D0]/20"
+                        className="rounded-full bg-[#1F8A4C] hover:bg-[#166B3A] text-white font-semibold px-8 h-12 shadow-lg shadow-[#1F8A4C]/20"
                       >
                         {submitting ? (
                           <span className="flex items-center justify-center gap-2">

@@ -6,7 +6,7 @@ export type HubBrandColors = {
   accent: string;
 };
 
-/** F&R Rwanda — sky blue primary, yellow accent (from flyer). */
+/** F&R Rwanda — green primary, black accents (Busuu-inspired language school). */
 export function hubBrand(): HubBrandColors {
   const label = `${HUB.name} ${HUB.company}`.toLowerCase();
   const isParrotCanada =
@@ -23,8 +23,8 @@ export function hubBrand(): HubBrandColors {
   }
 
   return {
-    primary: "#0070D0",
-    primaryDark: "#0058A8",
-    accent: "#FCC400",
+    primary: "#1F8A4C",
+    primaryDark: "#166B3A",
+    accent: "#0B0B0B",
   };
 }

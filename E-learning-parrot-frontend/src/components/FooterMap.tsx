@@ -61,13 +61,13 @@ const FooterMap = () => {
               href={OFFICE.directionsUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 rounded-md bg-[#0070D0]/95 px-2.5 py-1 text-[10px] font-medium text-white hover:bg-[#0070D0] transition-colors"
+              className="inline-flex items-center gap-1.5 rounded-md bg-[#1F8A4C]/95 px-2.5 py-1 text-[10px] font-medium text-white hover:bg-[#1F8A4C] transition-colors"
             >
-              <MapPin className="h-3 w-3 text-[#FCC400]" />
+              <MapPin className="h-3 w-3 text-[#1F8A4C]" />
               {OFFICE.label}
               <ExternalLink className="h-3 w-3 opacity-70" />
             </a>
-            <p className="rounded-md bg-[#0070D0]/90 px-2.5 py-1 text-[10px] leading-snug text-white/90">
+            <p className="rounded-md bg-[#1F8A4C]/90 px-2.5 py-1 text-[10px] leading-snug text-white/90">
               {OFFICE.address}
             </p>
           </div>

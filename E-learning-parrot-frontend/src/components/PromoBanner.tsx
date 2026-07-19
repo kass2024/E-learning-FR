@@ -53,7 +53,7 @@ const PromoBanner = () => {
           </span>
 
           {banner.headline?.trim() && (
-            <span className="font-extrabold text-[#FCC400] uppercase tracking-wide text-sm sm:text-base">
+            <span className="font-extrabold text-[#1F8A4C] uppercase tracking-wide text-sm sm:text-base">
               {banner.headline}
             </span>
           )}
@@ -64,7 +64,7 @@ const PromoBanner = () => {
 
           {showTimer && (
             <div className="flex items-center gap-2">
-              <span className="hidden md:inline text-[#FCC400] font-semibold italic text-xs">
+              <span className="hidden md:inline text-[#1F8A4C] font-semibold italic text-xs">
                 Flash Sale Ends In
               </span>
               <div className="flex items-center gap-1.5">
@@ -77,7 +77,7 @@ const PromoBanner = () => {
                     key={unit.label}
                     className="bg-white rounded-md px-2 py-1 text-center min-w-[44px] shadow-sm"
                   >
-                    <div className="text-[#FCC400] font-bold text-sm leading-none">{unit.value}</div>
+                    <div className="text-[#1F8A4C] font-bold text-sm leading-none">{unit.value}</div>
                     <div className="text-[9px] text-slate-600 mt-0.5">{unit.label}</div>
                   </div>
                 ))}
@@ -87,12 +87,12 @@ const PromoBanner = () => {
 
           {showCoupon && (
             <div className="flex items-center gap-2">
-              <span className="hidden md:inline text-[#FCC400] font-semibold italic text-xs">
+              <span className="hidden md:inline text-[#1F8A4C] font-semibold italic text-xs">
                 Use Coupon Code
               </span>
               <button
                 type="button"
-                className="rounded-md bg-[#F2E6A0] hover:bg-[#F2D96A] text-[#0070D0] font-extrabold px-3 py-1.5 text-xs sm:text-sm tracking-wide"
+                className="rounded-md bg-[#F2E6A0] hover:bg-[#F2D96A] text-[#1F8A4C] font-extrabold px-3 py-1.5 text-xs sm:text-sm tracking-wide"
                 onClick={(e) => {
                   e.stopPropagation();
                   void navigator.clipboard?.writeText(banner.coupon_code!.trim());

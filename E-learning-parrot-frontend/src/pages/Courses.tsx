@@ -29,7 +29,7 @@ const Courses = () => {
       ? allCourses
       : allCourses.filter((c) => c.programId === selectedProgramId);
 
-  const categories = ["All", "Development", "Data Science", "Marketing", "Design", "Business"];
+  const categories = ["All", "English", "French", "Kinyarwanda"];
   const levels = ["All Levels", "Beginner", "Intermediate", "Advanced"];
 
   const persistSelectedCourses = (primaryCourse: any, additionalCourses: any[] = []) => {
@@ -117,15 +117,15 @@ const Courses = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <section className="public-page-offset pb-16 px-4 bg-gradient-to-b from-blue-50 via-white to-white border-b border-border">
+      <section className="public-page-offset pb-16 px-4 bg-gradient-to-b from-[#EAF7F0] via-white to-white border-b border-border">
         <div className="container mx-auto">
           <div className="max-w-3xl mx-auto text-center">
-            <h1 className="text-4xl md:text-5xl font-bold mb-4 text-slate-900">
-              Discover Your Next
-              <span className="text-primary"> Learning Program</span>
+            <h1 className="text-4xl md:text-5xl font-bold mb-4 text-[#0B0B0B]">
+              Choose the language
+              <span className="text-primary"> you want to learn</span>
             </h1>
-            <p className="text-lg md:text-xl text-slate-600 mb-8">
-              Browse structured, expert-led learning programs designed to support your study, career, and personal goals.
+            <p className="text-lg md:text-xl text-[#0B0B0B]/65 mb-8">
+              English, French, and Kinyarwanda — expert-led online courses for real-life fluency.
             </p>
 
             {/* Search Bar */}
@@ -133,8 +133,8 @@ const Courses = () => {
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                 <Input
-                  placeholder="Search for programs..."
-                  className="pl-10 h-12 border-slate-200 bg-white text-slate-900 placeholder:text-slate-400"
+                  placeholder="Search English, French, Kinyarwanda..."
+                  className="pl-10 h-12 border-slate-200 bg-white text-slate-900 placeholder:text-slate-400 rounded-full"
                 />
               </div>
               <Button
@@ -241,7 +241,7 @@ const Courses = () => {
                   <Badge className="absolute top-4 left-4 bg-primary text-primary-foreground">
                     {course.category || course.status || "Zoom Program"}
                   </Badge>
-                  <Badge className="absolute top-4 right-4 bg-[#FCC400] text-[#0070D0]">
+                  <Badge className="absolute top-4 right-4 bg-[#1F8A4C] text-[#1F8A4C]">
                     {(course as any).level || "All Levels"}
                   </Badge>
                 </div>
@@ -276,7 +276,7 @@ const Courses = () => {
                     <Button
                       variant="default"
                       size="sm"
-                      className="rounded-full bg-[#FCC400] hover:bg-[#E6B000] text-[#0070D0] font-semibold"
+                      className="rounded-full bg-[#1F8A4C] hover:bg-[#E6B000] text-[#1F8A4C] font-semibold"
                       onClick={() => handleEnrollClick(course)}
                     >
                       Enroll & Sign Up

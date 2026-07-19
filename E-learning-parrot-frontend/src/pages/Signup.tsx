@@ -625,7 +625,7 @@ const Signup = () => {
       style={brandStyle}
     >
       {!showInstitutionJoinShell && useInstitutionJoinChrome && (
-        <header className="border-b border-white/10 bg-gradient-to-r from-[#0070D0] to-[#1A8AD8] px-4 py-5 text-white">
+        <header className="border-b border-white/10 bg-gradient-to-r from-[#1F8A4C] to-[#1A8AD8] px-4 py-5 text-white">
           <div className="container mx-auto max-w-3xl flex items-center gap-3">
             {lockedInstitutionLoading ? (
               <>
@@ -701,7 +701,7 @@ const Signup = () => {
             >
               <p className="text-sm text-slate-600 max-w-lg mx-auto">
                 Complete the steps below to create your account and enroll in programs at{" "}
-                <span className="font-semibold text-[var(--institution-primary,#0070D0)]">{lockedInstitution.name}</span>.
+                <span className="font-semibold text-[var(--institution-primary,#1F8A4C)]">{lockedInstitution.name}</span>.
               </p>
             </motion.div>
           )}
@@ -723,7 +723,7 @@ const Signup = () => {
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-[var(--brand-primary)]/90 via-[var(--brand-primary)]/40 to-transparent" />
                 <div className="absolute bottom-0 p-6 text-white">
-                  <Sparkles className="h-5 w-5 text-[#FCC400] mb-2" />
+                  <Sparkles className="h-5 w-5 text-[#1F8A4C] mb-2" />
                   <p className="font-semibold text-lg leading-snug">
                     Expert instructors, live classes, and exam prep — all in one place.
                   </p>
@@ -779,7 +779,7 @@ const Signup = () => {
                 <motion.div
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: "auto" }}
-                  className="mt-6 rounded-2xl border border-[#FCC400]/30 bg-[#FCC400]/8 p-4"
+                  className="mt-6 rounded-2xl border border-[#1F8A4C]/30 bg-[#1F8A4C]/8 p-4"
                 >
                   <p className="text-xs font-semibold uppercase tracking-wide text-[var(--brand-primary)]/70 mb-2">
                     Your selection
@@ -804,7 +804,7 @@ const Signup = () => {
               className={cn(
                 "rounded-3xl border bg-white shadow-xl overflow-hidden",
                 showInstitutionJoinShell
-                  ? "border-[#0070D0]/10 shadow-[#0070D0]/10"
+                  ? "border-[#1F8A4C]/10 shadow-[#1F8A4C]/10"
                   : "border-slate-200/80 shadow-slate-200/50",
               )}
             >
@@ -850,7 +850,7 @@ const Signup = () => {
                 </div>
                 <div className="h-1.5 rounded-full bg-slate-200 overflow-hidden">
                   <motion.div
-                    className="h-full bg-gradient-to-r from-[var(--brand-primary)] to-[#FCC400] rounded-full"
+                    className="h-full bg-gradient-to-r from-[var(--brand-primary)] to-[#1F8A4C] rounded-full"
                     initial={{ width: 0 }}
                     animate={{ width: `${progress}%` }}
                     transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
@@ -1199,7 +1199,7 @@ const Signup = () => {
                       <div className="grid sm:grid-cols-2 gap-4">
                         <div className="space-y-1.5">
                           <Label className="text-slate-700">
-                            First name <span className="text-[#FCC400]">*</span>
+                            First name <span className="text-[#1F8A4C]">*</span>
                           </Label>
                           <div className="relative">
                             <User className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
@@ -1228,7 +1228,7 @@ const Signup = () => {
                       <div className="grid sm:grid-cols-2 gap-4">
                         <div className="space-y-1.5">
                           <Label className="text-slate-700">
-                            Email <span className="text-[#FCC400]">*</span>
+                            Email <span className="text-[#1F8A4C]">*</span>
                           </Label>
                           <div className="relative">
                             <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
@@ -1306,7 +1306,7 @@ const Signup = () => {
                           <div className="grid sm:grid-cols-2 gap-4">
                             <div className="space-y-1.5">
                               <Label className="text-slate-700">
-                                Password <span className="text-[#FCC400]">*</span>
+                                Password <span className="text-[#1F8A4C]">*</span>
                               </Label>
                               <div className="relative">
                                 <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
@@ -1335,7 +1335,7 @@ const Signup = () => {
 
                             <div className="space-y-1.5">
                               <Label className="text-slate-700">
-                                Confirm password <span className="text-[#FCC400]">*</span>
+                                Confirm password <span className="text-[#1F8A4C]">*</span>
                               </Label>
                               <div className="relative">
                                 <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
@@ -1454,7 +1454,7 @@ const Signup = () => {
                       type="submit"
                       disabled={loading || !acceptTerms}
                       onClick={handleSubmit}
-                      className="rounded-full bg-[#FCC400] hover:bg-[#c91820] text-white font-semibold ml-auto px-8 shadow-lg shadow-[#FCC400]/25"
+                      className="rounded-full bg-[#1F8A4C] hover:bg-[#c91820] text-white font-semibold ml-auto px-8 shadow-lg shadow-[#1F8A4C]/25"
                     >
                       {loading ? (
                         <>
@@ -1475,7 +1475,7 @@ const Signup = () => {
                   Already have an account?{" "}
                   <NavLink
                     to={isInstitutionLocked ? `/login/${institutionSlugParam}` : "/login"}
-                    className="font-semibold text-[var(--brand-primary)] hover:text-[#FCC400] transition-colors"
+                    className="font-semibold text-[var(--brand-primary)] hover:text-[#1F8A4C] transition-colors"
                   >
                     Log in
                   </NavLink>

@@ -39,7 +39,7 @@ const StarPromoBanner = () => {
             e.stopPropagation();
             dismiss();
           }}
-          className="absolute -top-1 -right-1 z-10 w-7 h-7 rounded-full bg-[#0070D0]/90 hover:bg-[#0070D0] text-white flex items-center justify-center shadow-md transition-colors"
+          className="absolute -top-1 -right-1 z-10 w-7 h-7 rounded-full bg-[#1F8A4C]/90 hover:bg-[#1F8A4C] text-white flex items-center justify-center shadow-md transition-colors"
           aria-label="Dismiss star banner"
         >
           <X className="w-3.5 h-3.5" />

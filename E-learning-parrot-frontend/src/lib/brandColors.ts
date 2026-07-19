@@ -1,13 +1,14 @@
-/** F&R Rwanda Ltd brand palette (flyer: sky blue, yellow, white, green) */
+/** F&R Rwanda — language school palette (Busuu-inspired: black + green) */
 export const BRAND = {
-  green: "#0070D0",
-  greenDark: "#0058A8",
-  greenLight: "#1A8AD8",
-  red: "#FCC400",
-  redDark: "#E6B000",
-  yellow: "#FCC400",
-  sky: "#0070D0",
-  forest: "#346454",
-  black: "#0A0A0A",
+  green: "#1F8A4C",
+  greenDark: "#166B3A",
+  greenLight: "#2BA85C",
+  greenSoft: "#EAF7F0",
+  red: "#1F8A4C",
+  redDark: "#166B3A",
+  yellow: "#1F8A4C",
+  sky: "#1F8A4C",
+  forest: "#14633A",
+  black: "#0B0B0B",
   white: "#FFFFFF",
 } as const;

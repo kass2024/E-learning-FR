@@ -3,11 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import Footer from "@/components/Footer";
 import StarPromoBanner from "@/components/StarPromoBanner";
-import { SectionHeader } from "@/components/home/SectionHeader";
 import { FadeIn, StaggerChildren, StaggerItem } from "@/components/home/FadeIn";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { getCourses } from "@/api/axios";
 import { formatCoursePrice } from "@/lib/apiConfig";
@@ -15,27 +12,23 @@ import { DEFAULT_IMAGE } from "@/lib/defaultImages";
 import { getFeaturedCourseImage } from "@/lib/homeImages";
 import { SafeImage } from "@/components/ui/SafeImage";
 import {
-  EXAM_PROGRAMS,
   FEATURED_PROGRAM_FALLBACK,
   HOME_IMAGES,
   HOME_MISSION,
   HUB,
   LANGUAGE_PROGRAMS,
   LIVE_FEATURES,
-  STATS,
   STUDENT_FEATURES,
   TESTIMONIALS,
+  WHY_LEARN,
 } from "@/lib/homeContent";
 import {
   ArrowRight,
-  Award,
-  BookOpen,
   CheckCircle2,
-  Globe2,
-  Headphones,
+  MessageCircle,
+  Mic2,
   Search,
-  ShieldCheck,
-  Star,
+  Sparkles,
   Users,
   Video,
 } from "lucide-react";
@@ -49,12 +42,6 @@ type CourseRow = {
   status?: string;
   image?: string | null;
 };
-
-const TRUST_ITEMS = [
-  { icon: Headphones, label: "24/7 Online Support" },
-  { icon: ShieldCheck, label: "Secure Stripe Payments" },
-  { icon: Award, label: "Fully Accredited Programs" },
-] as const;
 
 const HERO_QUICK_LINKS: Array<{ label: string; to?: string; href?: string }> = [
   { label: "All Programs", to: "/courses" },
@@ -109,218 +96,221 @@ const Index = () => {
   };
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-white text-[#0B0B0B]">
       <StarPromoBanner />
-      {/* ─── HERO (Apex-style navy banner) ─── */}
-      <section className="relative public-page-offset pb-0 overflow-hidden bg-gradient-to-br from-[#0070D0] via-[#0058A8] to-[#0070D0]">
-        <div className="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_70%_50%,#FCC400_0%,transparent_50%)]" />
 
-        <div className="container relative mx-auto px-4 pb-16 md:pb-20">
-          <div className="grid lg:grid-cols-2 gap-10 lg:gap-8 items-center">
+      {/* ─── HERO (Busuu-style: brand, one headline, one line, CTAs, dominant visual) ─── */}
+      <section className="relative public-page-offset overflow-hidden bg-[#EAF7F0]">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(31,138,76,0.18),transparent_55%)]" />
+        <div className="absolute inset-0 bg-[linear-gradient(180deg,transparent_60%,#fff_100%)]" />
+
+        <div className="container relative mx-auto px-4 pt-10 pb-16 md:pt-16 md:pb-24">
+          <div className="grid lg:grid-cols-[1.05fr_0.95fr] gap-10 lg:gap-14 items-center">
             <motion.div
-              initial={{ opacity: 0, x: -24 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.6 }}
+              initial={{ opacity: 0, y: 18 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.55 }}
             >
-              <h1 className="text-3xl sm:text-4xl lg:text-5xl xl:text-[3.25rem] font-bold leading-[1.12] text-white mb-4">
-                Get Trained &amp; Certified
+              <p className="text-sm font-semibold tracking-wide text-[#1F8A4C] mb-4">
+                {HUB.company} · School of Fluency and Proficiency
+              </p>
+              <h1 className="text-4xl sm:text-5xl lg:text-[3.4rem] font-extrabold leading-[1.08] tracking-tight text-[#0B0B0B] mb-5">
+                New language,
                 <br />
-                <span className="text-[#FCC400]">With {HUB.name}</span>
+                new opportunities,
+                <br />
+                <span className="text-[#1F8A4C]">new you</span>
               </h1>
-              <p className="text-lg sm:text-xl text-white/90 font-medium mb-8 max-w-lg">
-                {HUB.tagline}
+              <p className="text-lg text-[#0B0B0B]/70 max-w-xl mb-8 leading-relaxed">
+                Compact expert-led lessons in English, French, and Kinyarwanda — plus live practice that builds real confidence.
               </p>
 
-              {/* Hero search box — Apex pattern */}
-              <div className="rounded-xl bg-black/25 backdrop-blur-sm p-3 sm:p-4 max-w-xl">
-                <form onSubmit={handleHeroSearch} className="flex flex-col sm:flex-row gap-2">
-                  <Input
-                    type="search"
-                    placeholder="Subject, exam, or language…"
-                    value={heroSearch}
-                    onChange={(e) => setHeroSearch(e.target.value)}
-                    className="h-12 sm:h-14 flex-1 rounded-lg border-0 bg-white text-slate-900 text-base placeholder:text-slate-400 shadow-inner"
-                  />
-                  <Button
-                    type="submit"
-                    size="lg"
-                    className="h-12 sm:h-14 px-8 rounded-lg bg-[#FCC400] hover:bg-[#E69545] text-[#0070D0] font-bold text-base shadow-lg shrink-0"
-                  >
-                    <Search className="h-4 w-4 mr-2 sm:hidden" />
-                    Search Courses
-                  </Button>
-                </form>
-                <div className="flex flex-wrap items-center gap-x-1 gap-y-1 mt-3 text-sm text-white/80">
-                  {HERO_QUICK_LINKS.map((link, i) => (
-                    <span key={link.href ?? link.to ?? link.label} className="flex items-center">
-                      {i > 0 && <span className="mx-2 text-white/40">|</span>}
-                      {link.href ? (
-                        <a
-                          href={link.href}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="hover:text-[#FCC400] transition-colors"
-                        >
-                          {link.label}
-                        </a>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => navigate(link.to!)}
-                          className="hover:text-[#FCC400] transition-colors"
-                        >
-                          {link.label}
-                        </button>
-                      )}
-                    </span>
-                  ))}
-                </div>
-              </div>
-
-              <div className="flex flex-wrap gap-3 mt-5 max-w-xl">
+              <div className="flex flex-wrap gap-3 mb-8">
                 <Button
                   size="lg"
-                  className="h-11 px-6 rounded-lg bg-white text-[#0070D0] hover:bg-white/90 font-semibold"
+                  className="h-12 px-8 rounded-full bg-[#1F8A4C] hover:bg-[#166B3A] text-white font-semibold shadow-lg shadow-[#1F8A4C]/25"
                   onClick={() => navigate("/signup")}
                 >
-                  Start learning today
+                  Learn for free
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
                 <Button
                   size="lg"
                   variant="outline"
-                  className="h-11 px-6 rounded-lg border-white/40 bg-transparent text-white hover:bg-white/10 hover:text-white"
-                  onClick={() => navigate("/institution-signup")}
+                  className="h-12 px-8 rounded-full border-[#0B0B0B]/15 bg-white text-[#0B0B0B] hover:bg-[#0B0B0B]/5 font-semibold"
+                  onClick={() => navigate("/courses")}
                 >
-                  Partner institution sign up
+                  Browse languages
                 </Button>
+              </div>
+
+              <form onSubmit={handleHeroSearch} className="flex flex-col sm:flex-row gap-2 max-w-xl mb-4">
+                <Input
+                  type="search"
+                  placeholder="Search English, French, Kinyarwanda…"
+                  value={heroSearch}
+                  onChange={(e) => setHeroSearch(e.target.value)}
+                  className="h-12 flex-1 rounded-full border-[#0B0B0B]/10 bg-white text-[#0B0B0B] placeholder:text-[#0B0B0B]/40"
+                />
+                <Button
+                  type="submit"
+                  className="h-12 px-6 rounded-full bg-[#0B0B0B] hover:bg-[#1a1a1a] text-white font-semibold"
+                >
+                  <Search className="h-4 w-4 mr-2" />
+                  Search
+                </Button>
+              </form>
+
+              <div className="flex flex-wrap items-center gap-x-1 gap-y-1 text-sm text-[#0B0B0B]/55">
+                {HERO_QUICK_LINKS.map((link, i) => (
+                  <span key={link.href ?? link.to ?? link.label} className="flex items-center">
+                    {i > 0 && <span className="mx-2 text-[#0B0B0B]/20">·</span>}
+                    {link.href ? (
+                      <a href={link.href} target="_blank" rel="noopener noreferrer" className="hover:text-[#1F8A4C]">
+                        {link.label}
+                      </a>
+                    ) : (
+                      <button type="button" onClick={() => navigate(link.to!)} className="hover:text-[#1F8A4C]">
+                        {link.label}
+                      </button>
+                    )}
+                  </span>
+                ))}
               </div>
             </motion.div>
 
             <motion.div
-              className="relative hidden lg:flex justify-end items-end h-[420px]"
-              initial={{ opacity: 0, x: 24 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.6, delay: 0.1 }}
+              className="relative"
+              initial={{ opacity: 0, scale: 0.98 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.6, delay: 0.08 }}
             >
-              <SafeImage
-                src={HOME_IMAGES.heroMain}
-                fallback={DEFAULT_IMAGE}
-                alt="Student learning online"
-                className="max-h-[400px] w-auto object-contain drop-shadow-2xl"
-              />
+              <div className="relative rounded-[2rem] overflow-hidden bg-[#0B0B0B] aspect-[4/5] max-h-[540px] shadow-2xl">
+                <SafeImage
+                  src={HOME_IMAGES.heroMain}
+                  fallback={DEFAULT_IMAGE}
+                  alt="Learner practicing a new language online"
+                  className="w-full h-full object-cover opacity-95"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-[#0B0B0B]/70 via-transparent to-transparent" />
+                <div className="absolute bottom-6 left-6 right-6 text-white">
+                  <p className="text-sm font-medium text-[#8FDBB0] mb-1">Speak a language in minutes a day</p>
+                  <p className="text-xl font-bold">English · French · Kinyarwanda</p>
+                </div>
+              </div>
             </motion.div>
           </div>
         </div>
-
-        {/* Trust bar — Apex-style feature strip */}
-        <div className="border-t border-white/10 bg-[#0070D0]/80 backdrop-blur-sm">
-          <div className="container mx-auto px-4">
-            <div className="grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-white/10">
-              {TRUST_ITEMS.map((item) => (
-                <div
-                  key={item.label}
-                  className="flex items-center justify-center gap-3 py-4 sm:py-5 text-white"
-                >
-                  <div className="w-10 h-10 rounded-full border border-white/30 flex items-center justify-center shrink-0">
-                    <item.icon className="h-5 w-5 text-[#FCC400]" />
-                  </div>
-                  <span className="text-sm font-medium">{item.label}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
       </section>
 
-      {/* ─── STATS STRIP ─── */}
-      <section className="py-8 bg-slate-50 border-b border-slate-100">
-        <div className="container mx-auto px-4">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {STATS.map((s) => (
-              <div key={s.label} className="text-center">
-                <p className="text-2xl md:text-3xl font-bold text-[#0070D0]">{s.value}</p>
-                <p className="text-xs text-slate-500 uppercase tracking-wider mt-1">{s.label}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ─── MISSION ─── */}
+      {/* ─── I WANT TO LEARN ─── */}
       <section className="py-16 md:py-20 bg-white">
         <div className="container mx-auto px-4">
-          <FadeIn>
-            <div className="grid lg:grid-cols-2 gap-12 items-center">
-              <div className="relative rounded-2xl overflow-hidden shadow-lg aspect-[4/3] lg:aspect-auto lg:h-[400px] group">
-                <SafeImage
-                  src={HOME_IMAGES.marketplace}
-                  fallback={DEFAULT_IMAGE}
-                  alt="Global learning community"
-                  className="w-full h-full group-hover:scale-105 transition-transform duration-700"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-[#0070D0]/80 to-transparent" />
-                <div className="absolute bottom-6 left-6 right-6 text-white">
-                  <Globe2 className="h-8 w-8 text-[#FCC400] mb-2" />
-                  <p className="text-lg font-semibold">Learn anytime, anywhere</p>
-                </div>
-              </div>
-              <div>
-                <SectionHeader
-                  align="left"
-                  eyebrow="Our mission"
-                  title="Africa's leading e-learning marketplace"
-                  description={HOME_MISSION.mission}
-                  className="mb-6"
-                />
-                <ul className="space-y-3 mb-8">
-                  {[
-                    "Language training for study, work, and travel abroad",
-                    "International exam preparation (IELTS, TOEFL, DELF, TOPIK & more)",
-                    "Live Zoom classes with approved instructors",
-                    "Secure online enrollment and Stripe payments",
-                  ].map((item) => (
-                    <li key={item} className="flex items-start gap-3 text-slate-600">
-                      <CheckCircle2 className="h-5 w-5 text-[#FCC400] shrink-0 mt-0.5" />
-                      <span>{item}</span>
-                    </li>
-                  ))}
-                </ul>
-                <Button
-                  className="rounded-md bg-[#0070D0] hover:bg-[#0058A8] px-8 h-11"
-                  onClick={() => navigate("/about")}
-                >
-                  Learn about us
-                </Button>
-              </div>
-            </div>
+          <FadeIn className="text-center max-w-2xl mx-auto mb-10">
+            <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight text-[#0B0B0B] mb-3">
+              I want to learn
+            </h2>
+            <p className="text-[#0B0B0B]/65">
+              Choose your language and start with interactive online classes designed for real life.
+            </p>
           </FadeIn>
+
+          <StaggerChildren className="grid sm:grid-cols-3 gap-4 md:gap-6 max-w-5xl mx-auto">
+            {LANGUAGE_PROGRAMS.map((lang) => (
+              <StaggerItem key={lang.title}>
+                <button
+                  type="button"
+                  onClick={() => navigate("/signup")}
+                  className="group w-full text-left rounded-3xl border border-[#0B0B0B]/08 bg-[#EAF7F0]/40 hover:bg-[#EAF7F0] hover:border-[#1F8A4C]/35 transition-all p-5 md:p-6"
+                >
+                  <div className="relative h-36 rounded-2xl overflow-hidden mb-4">
+                    <SafeImage
+                      src={lang.image}
+                      fallback={DEFAULT_IMAGE}
+                      alt={lang.title}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    />
+                  </div>
+                  <div className="flex items-center justify-between gap-2">
+                    <div>
+                      <h3 className="text-xl font-bold text-[#0B0B0B]">{lang.title}</h3>
+                      <p className="text-sm text-[#0B0B0B]/55 mt-1">{lang.subtitle}</p>
+                    </div>
+                    <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-[#1F8A4C] text-white group-hover:bg-[#166B3A] transition-colors">
+                      <ArrowRight className="h-4 w-4" />
+                    </span>
+                  </div>
+                </button>
+              </StaggerItem>
+            ))}
+          </StaggerChildren>
         </div>
       </section>
 
-      {/* ─── FEATURED COURSES (Apex card grid) ─── */}
-      <section className="py-16 md:py-20 bg-slate-50">
+      {/* ─── WHY LEARN WITH US ─── */}
+      <section className="py-16 md:py-20 bg-[#0B0B0B] text-white">
         <div className="container mx-auto px-4">
-          <FadeIn>
-            <SectionHeader
-              eyebrow="Our Courses"
-              title="Find The Best Programs For You"
-              description="Start with our most popular courses — enroll online and join your first class."
-            />
+          <FadeIn className="text-center max-w-2xl mx-auto mb-12">
+            <p className="text-sm font-semibold uppercase tracking-wider text-[#8FDBB0] mb-3">Why learn with us?</p>
+            <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight mb-3">
+              Why learn a language with {HUB.name}?
+            </h2>
+            <p className="text-white/65">{HOME_MISSION.mission}</p>
+          </FadeIn>
+
+          <StaggerChildren className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
+            {WHY_LEARN.map((item, i) => {
+              const icons = [Sparkles, MessageCircle, Users, Mic2];
+              const Icon = icons[i % icons.length];
+              return (
+                <StaggerItem key={item.title}>
+                  <div className="h-full rounded-3xl border border-white/10 bg-white/5 p-6 hover:bg-white/10 transition-colors">
+                    <div className="mb-4 inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-[#1F8A4C] text-white">
+                      <Icon className="h-5 w-5" />
+                    </div>
+                    <h3 className="text-lg font-bold mb-2">{item.title}</h3>
+                    <p className="text-sm text-white/65 leading-relaxed">{item.desc}</p>
+                  </div>
+                </StaggerItem>
+              );
+            })}
+          </StaggerChildren>
+        </div>
+      </section>
+
+      {/* ─── FEATURED LANGUAGE COURSES ─── */}
+      <section className="py-16 md:py-20 bg-white">
+        <div className="container mx-auto px-4">
+          <FadeIn className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-10">
+            <div className="max-w-xl">
+              <p className="text-sm font-semibold uppercase tracking-wider text-[#1F8A4C] mb-2">Our courses</p>
+              <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight text-[#0B0B0B] mb-2">
+                Start learning today
+              </h2>
+              <p className="text-[#0B0B0B]/65">
+                Quality language education at affordable prices — monthly, termly, or VIP one-on-one.
+              </p>
+            </div>
+            <Button
+              className="rounded-full bg-[#1F8A4C] hover:bg-[#166B3A] text-white px-6 h-11 font-semibold self-start md:self-auto"
+              onClick={() => navigate("/courses")}
+            >
+              View all programs
+            </Button>
           </FadeIn>
 
           {usingFallback && (
-            <p className="text-center text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-4 py-2 mb-6 max-w-2xl mx-auto">
+            <p className="text-center text-sm text-[#166B3A] bg-[#EAF7F0] border border-[#1F8A4C]/20 rounded-2xl px-4 py-2 mb-6 max-w-2xl mx-auto">
               {catalogLoading
-                ? "Loading live catalog… showing featured programs in the meantime."
-                : "Live catalog unavailable — showing our featured programs. Start the backend API for up-to-date pricing."}
+                ? "Loading live catalog…"
+                : "Showing featured language programs. Connect to the live catalog for latest pricing."}
             </p>
           )}
 
           <StaggerChildren className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {featured.map((course, index) => (
               <StaggerItem key={course.id < 0 ? `fallback-${index}` : course.id}>
-                <Card className="overflow-hidden border border-slate-200 bg-white shadow-sm hover:shadow-lg transition-all duration-300 group h-full flex flex-col">
+                <article className="group h-full flex flex-col overflow-hidden rounded-3xl border border-[#0B0B0B]/08 bg-white hover:shadow-xl hover:shadow-[#1F8A4C]/10 transition-all">
                   <div className="aspect-[16/10] overflow-hidden relative">
                     <SafeImage
                       src={
@@ -330,207 +320,84 @@ const Index = () => {
                       }
                       fallback={DEFAULT_IMAGE}
                       alt={course.title}
-                      className="w-full h-full group-hover:scale-105 transition-transform duration-500"
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     />
+                    <span className="absolute top-3 left-3 rounded-full bg-white/95 px-3 py-1 text-xs font-semibold text-[#1F8A4C]">
+                      Language
+                    </span>
                   </div>
-                  <CardContent className="p-4 flex flex-col flex-1">
-                    <div className="flex items-center gap-1 mb-2">
-                      {[1, 2, 3, 4, 5].map((i) => (
-                        <Star key={i} className="h-3.5 w-3.5 fill-[#FCC400] text-[#FCC400]" />
-                      ))}
-                      <span className="text-xs font-semibold text-[#0070D0] ml-1">5.0</span>
-                    </div>
-                    <h3 className="font-bold text-[#0070D0] text-base mb-2 line-clamp-2 leading-snug">
-                      {course.title}
-                    </h3>
-                    <p className="text-xs text-slate-500 flex items-center gap-1 mb-3">
-                      <Users className="h-3.5 w-3.5" />
-                      {course.duration ? `${course.duration} program` : "Open enrollment"}
+                  <div className="p-5 flex flex-col flex-1">
+                    <h3 className="font-bold text-lg text-[#0B0B0B] mb-2 line-clamp-2">{course.title}</h3>
+                    <p className="text-sm text-[#0B0B0B]/55 line-clamp-2 mb-4">
+                      {course.description || "Interactive online language classes with expert instructors."}
                     </p>
-                    <p className="text-sm font-bold text-[#0070D0] mb-4 mt-auto">
+                    <p className="text-sm text-[#0B0B0B]/45 mb-1">
+                      {course.duration ? `${course.duration}` : "Flexible schedule"}
+                    </p>
+                    <p className="text-lg font-extrabold text-[#1F8A4C] mb-4 mt-auto">
                       {formatCoursePrice(course.price)}
                     </p>
                     <div className="flex gap-2">
                       <Button
                         variant="outline"
-                        size="sm"
-                        className="flex-1 rounded-md border-[#0070D0] text-[#0070D0] hover:bg-[#0070D0]/5 h-9 text-xs font-semibold"
+                        className="flex-1 rounded-full border-[#0B0B0B]/15 text-[#0B0B0B] hover:bg-[#0B0B0B]/5"
                         onClick={() => navigate("/courses")}
                       >
-                        View Details
+                        Details
                       </Button>
                       <Button
-                        size="sm"
-                        className="flex-1 rounded-md bg-[#FCC400] hover:bg-[#E69545] text-[#0070D0] h-9 text-xs font-semibold"
+                        className="flex-1 rounded-full bg-[#1F8A4C] hover:bg-[#166B3A] text-white"
                         onClick={() => navigate("/signup")}
                       >
-                        Enroll Now
+                        Enroll
                       </Button>
                     </div>
-                  </CardContent>
-                </Card>
-              </StaggerItem>
-            ))}
-          </StaggerChildren>
-
-          <FadeIn className="text-center mt-10">
-            <Button
-              size="lg"
-              className="rounded-md bg-[#0070D0] hover:bg-[#0058A8] px-10 h-12 font-semibold"
-              onClick={() => navigate("/courses")}
-            >
-              View All Programs
-            </Button>
-          </FadeIn>
-        </div>
-      </section>
-
-      {/* ─── EXAM PREP ─── */}
-      <section className="py-16 md:py-20 bg-white">
-        <div className="container mx-auto px-4">
-          <FadeIn>
-            <SectionHeader
-              eyebrow="International exams"
-              title="Prepare for global admissions"
-              description="Structured programs for the world's most recognized English and academic proficiency tests."
-            />
-          </FadeIn>
-          <StaggerChildren className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {EXAM_PROGRAMS.map((program) => (
-              <StaggerItem key={program.title}>
-                <Card
-                  className="group overflow-hidden border border-slate-200 shadow-sm hover:shadow-lg transition-all duration-300 cursor-pointer bg-white h-full"
-                  onClick={() => navigate("/courses")}
-                >
-                  <div className="aspect-[16/10] overflow-hidden">
-                    <SafeImage
-                      src={program.image}
-                      fallback={DEFAULT_IMAGE}
-                      alt={program.title}
-                      className="w-full h-full group-hover:scale-105 transition-transform duration-500"
-                    />
                   </div>
-                  <CardContent className="p-4">
-                    <h3 className="font-bold text-[#0070D0] text-base mb-1.5">{program.title}</h3>
-                    <p className="text-sm text-slate-600 leading-relaxed">{program.desc}</p>
-                  </CardContent>
-                </Card>
+                </article>
               </StaggerItem>
             ))}
           </StaggerChildren>
         </div>
       </section>
 
-      {/* ─── LANGUAGES ─── */}
-      <section className="py-16 md:py-20 bg-slate-50">
+      {/* ─── LIVE PRACTICE ─── */}
+      <section className="py-16 md:py-20 bg-[#EAF7F0]">
         <div className="container mx-auto px-4">
           <FadeIn>
-            <SectionHeader
-              eyebrow="Language courses"
-              title="Master a new language"
-              description="From English and French to Korean, Chinese, German, and beyond — build fluency with expert tutors."
-            />
-          </FadeIn>
-          <StaggerChildren className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {LANGUAGE_PROGRAMS.map((lang) => (
-              <StaggerItem key={lang.title}>
-                <div
-                  className="group relative rounded-xl overflow-hidden h-56 cursor-pointer shadow-md hover:shadow-xl transition-all duration-300"
-                  onClick={() => navigate("/signup")}
-                >
-                  <SafeImage
-                    src={lang.image}
-                    fallback={DEFAULT_IMAGE}
-                    alt={lang.title}
-                    className="absolute inset-0 w-full h-full group-hover:scale-105 transition-transform duration-500"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-[#0070D0]/90 via-[#0070D0]/30 to-transparent" />
-                  <div className="absolute bottom-0 left-0 right-0 p-5 text-white">
-                    <h3 className="text-lg font-bold">{lang.title}</h3>
-                    <p className="text-sm text-white/80 mt-0.5">{lang.subtitle}</p>
-                  </div>
-                </div>
-              </StaggerItem>
-            ))}
-          </StaggerChildren>
-        </div>
-      </section>
-
-      {/* ─── STUDENT FEATURES ─── */}
-      <section className="py-16 md:py-20 bg-white">
-        <div className="container mx-auto px-4">
-          <FadeIn>
-            <SectionHeader
-              eyebrow="Student portal"
-              title="Everything you need to succeed"
-              description="Register, enroll, pay, learn live, and track your journey — all in one platform."
-            />
-          </FadeIn>
-          <StaggerChildren className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {STUDENT_FEATURES.map((feature) => (
-              <StaggerItem key={feature.title}>
-                <div className="rounded-xl border border-slate-200 bg-white overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 h-full">
-                  <div className="h-32 overflow-hidden">
-                    <SafeImage
-                      src={feature.image}
-                      fallback={DEFAULT_IMAGE}
-                      alt={feature.title}
-                      className="w-full h-full hover:scale-105 transition-transform duration-500"
-                    />
-                  </div>
-                  <div className="p-4">
-                    <h3 className="font-semibold text-base text-[#0070D0] mb-1.5">{feature.title}</h3>
-                    <p className="text-sm text-slate-600 leading-relaxed">{feature.desc}</p>
-                  </div>
-                </div>
-              </StaggerItem>
-            ))}
-          </StaggerChildren>
-        </div>
-      </section>
-
-      {/* ─── LIVE LEARNING ─── */}
-      <section className="py-16 md:py-20 bg-gradient-to-br from-[#0070D0] to-[#0058A8] text-white">
-        <div className="container mx-auto px-4">
-          <FadeIn>
-            <div className="grid lg:grid-cols-2 gap-12 items-center">
-              <div className="relative rounded-2xl overflow-hidden shadow-2xl order-2 lg:order-1 group">
+            <div className="grid lg:grid-cols-2 gap-10 lg:gap-14 items-center">
+              <div className="relative rounded-[2rem] overflow-hidden aspect-[4/3] shadow-xl order-2 lg:order-1">
                 <SafeImage
                   src={HOME_IMAGES.liveClass}
                   fallback={DEFAULT_IMAGE}
-                  alt="Live online class"
-                  className="w-full aspect-[4/3] group-hover:scale-105 transition-transform duration-500"
+                  alt="Live language class"
+                  className="w-full h-full object-cover"
                 />
-                <div className="absolute top-4 left-4">
-                  <Badge className="bg-red-500 hover:bg-red-500 text-white border-0 gap-1">
-                    <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
-                    Live
-                  </Badge>
-                </div>
               </div>
               <div className="order-1 lg:order-2">
-                <p className="text-sm font-semibold uppercase tracking-wider text-[#FCC400] mb-3">
-                  Live learning
+                <p className="text-sm font-semibold uppercase tracking-wider text-[#1F8A4C] mb-3">
+                  Immersive speaking practice
                 </p>
-                <h2 className="text-3xl md:text-4xl font-bold mb-4">Interactive Zoom classes</h2>
-                <p className="text-white/80 leading-relaxed mb-6">
-                  Join real-time sessions with instructors, ask questions, and access recorded lessons afterward.
+                <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight text-[#0B0B0B] mb-4">
+                  Learn for real life
+                </h2>
+                <p className="text-[#0B0B0B]/65 leading-relaxed mb-6">
+                  Get instant feedback and lasting confidence through live classes, pronunciation practice, and conversations that feel natural.
                 </p>
                 <ul className="space-y-3 mb-8">
                   {LIVE_FEATURES.map((item) => (
-                    <li key={item} className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center shrink-0">
-                        <Video className="h-4 w-4 text-[#FCC400]" />
-                      </div>
-                      <span className="text-white/90">{item}</span>
+                    <li key={item} className="flex items-center gap-3 text-[#0B0B0B]/80">
+                      <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-[#1F8A4C] text-white shrink-0">
+                        <Video className="h-4 w-4" />
+                      </span>
+                      {item}
                     </li>
                   ))}
                 </ul>
                 <Button
-                  className="rounded-md bg-[#FCC400] text-[#0070D0] hover:bg-[#e69545] font-semibold px-8 h-11"
+                  className="rounded-full bg-[#0B0B0B] hover:bg-[#1a1a1a] text-white px-8 h-11 font-semibold"
                   onClick={() => navigate("/meeting-registration")}
                 >
-                  Register for a webinar
+                  Book meeting with us
                 </Button>
               </div>
             </div>
@@ -538,96 +405,120 @@ const Index = () => {
         </div>
       </section>
 
-      {/* ─── TESTIMONIALS (Apex review + course card style) ─── */}
-      <section className="py-16 md:py-20 bg-slate-50">
+      {/* ─── STUDENT TOOLS ─── */}
+      <section className="py-16 md:py-20 bg-white">
         <div className="container mx-auto px-4">
-          <FadeIn>
-            <SectionHeader
-              eyebrow="Student's Review"
-              title="See What Our Learners Have to Say"
-              description={`Real students preparing for exams, languages, and study abroad with ${HUB.name}.`}
-            />
+          <FadeIn className="text-center max-w-2xl mx-auto mb-10">
+            <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight text-[#0B0B0B] mb-3">
+              Learn your way
+            </h2>
+            <p className="text-[#0B0B0B]/65">
+              Everything you need to enroll, practice, and progress — in one language-learning portal.
+            </p>
           </FadeIn>
-          <StaggerChildren className="grid md:grid-cols-3 gap-6">
-            {TESTIMONIALS.map((t) => (
-              <StaggerItem key={t.name}>
-                <Card className="border border-slate-200 shadow-sm bg-white overflow-hidden h-full hover:shadow-md transition-shadow">
-                  <CardContent className="p-5">
-                    <p className="text-slate-600 leading-relaxed text-sm mb-4">&ldquo;{t.text}&rdquo;</p>
-                    <div className="flex items-center gap-3 mb-4 pb-4 border-b border-slate-100">
-                      <SafeImage
-                        src={t.image}
-                        fallback={DEFAULT_IMAGE}
-                        alt={t.name}
-                        className="w-10 h-10 rounded-full ring-2 ring-[#FCC400]/40"
-                      />
-                      <div>
-                        <p className="font-semibold text-[#0070D0] text-sm">{t.name}</p>
-                        <p className="text-xs text-slate-500">{t.role}</p>
-                      </div>
-                    </div>
-                    <div className="rounded-lg bg-slate-50 p-3 border border-slate-100">
-                      <p className="text-xs font-semibold text-[#0070D0] mb-1">{t.role} Program</p>
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs text-slate-500">Enrolled student</span>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-7 text-xs rounded-md border-[#0070D0] text-[#0070D0]"
-                          onClick={() => navigate("/courses")}
-                        >
-                          View Details
-                        </Button>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
+          <StaggerChildren className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            {STUDENT_FEATURES.map((feature) => (
+              <StaggerItem key={feature.title}>
+                <div className="h-full rounded-3xl border border-[#0B0B0B]/08 overflow-hidden bg-white hover:border-[#1F8A4C]/30 transition-colors">
+                  <div className="h-32 overflow-hidden">
+                    <SafeImage
+                      src={feature.image}
+                      fallback={DEFAULT_IMAGE}
+                      alt={feature.title}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  <div className="p-5">
+                    <h3 className="font-bold text-[#0B0B0B] mb-1.5">{feature.title}</h3>
+                    <p className="text-sm text-[#0B0B0B]/60 leading-relaxed">{feature.desc}</p>
+                  </div>
+                </div>
               </StaggerItem>
             ))}
           </StaggerChildren>
         </div>
       </section>
 
-      {/* ─── INSTRUCTOR CTA ─── */}
+      {/* ─── TESTIMONIALS ─── */}
+      <section className="py-16 md:py-20 bg-[#F7F7F5]">
+        <div className="container mx-auto px-4">
+          <FadeIn className="text-center max-w-2xl mx-auto mb-10">
+            <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight text-[#0B0B0B] mb-3">
+              Trusted by language learners
+            </h2>
+            <p className="text-[#0B0B0B]/65">Real students building fluency with {HUB.name}.</p>
+          </FadeIn>
+          <StaggerChildren className="grid md:grid-cols-3 gap-5">
+            {TESTIMONIALS.map((t) => (
+              <StaggerItem key={t.name}>
+                <blockquote className="h-full rounded-3xl bg-white border border-[#0B0B0B]/08 p-6">
+                  <p className="text-[#0B0B0B]/75 leading-relaxed mb-6">&ldquo;{t.text}&rdquo;</p>
+                  <div className="flex items-center gap-3">
+                    <SafeImage
+                      src={t.image}
+                      fallback={DEFAULT_IMAGE}
+                      alt={t.name}
+                      className="w-11 h-11 rounded-full object-cover ring-2 ring-[#1F8A4C]/25"
+                    />
+                    <div>
+                      <p className="font-semibold text-[#0B0B0B] text-sm">{t.name}</p>
+                      <p className="text-xs text-[#1F8A4C] font-medium">{t.role}</p>
+                    </div>
+                  </div>
+                </blockquote>
+              </StaggerItem>
+            ))}
+          </StaggerChildren>
+        </div>
+      </section>
+
+      {/* ─── MISSION STRIP ─── */}
       <section className="py-16 md:py-20 bg-white">
         <div className="container mx-auto px-4">
           <FadeIn>
-            <div className="rounded-2xl overflow-hidden border border-slate-200 shadow-lg grid lg:grid-cols-2 bg-white">
-              <div className="p-8 md:p-10 flex flex-col justify-center">
-                <Badge className="w-fit mb-4 bg-[#FCC400]/15 text-[#0070D0] border-[#FCC400]/30">
-                  For instructors
-                </Badge>
-                <h2 className="text-2xl md:text-3xl font-bold text-[#0070D0] mb-4">
-                  Teach on our marketplace
+            <div className="grid lg:grid-cols-2 gap-10 items-center">
+              <div className="relative rounded-[2rem] overflow-hidden aspect-[4/3]">
+                <SafeImage
+                  src={HOME_IMAGES.marketplace}
+                  fallback={DEFAULT_IMAGE}
+                  alt="Language learning community"
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <div>
+                <p className="text-sm font-semibold uppercase tracking-wider text-[#1F8A4C] mb-3">Our mission</p>
+                <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight text-[#0B0B0B] mb-4">
+                  A dedicated language school
                 </h2>
-                <p className="text-slate-600 leading-relaxed mb-6">
-                  Approved instructors create courses, host live classes, manage students, and earn from every
-                  enrollment — while {HUB.company} handles platform support and payments.
-                </p>
+                <p className="text-[#0B0B0B]/65 leading-relaxed mb-6">{HOME_MISSION.vision}</p>
+                <ul className="space-y-3 mb-8">
+                  {[
+                    "English, French, and Kinyarwanda only",
+                    "Experienced & qualified instructors",
+                    "Flexible schedule to fit your lifestyle",
+                    "Personalized learning & feedback",
+                  ].map((item) => (
+                    <li key={item} className="flex items-start gap-3 text-[#0B0B0B]/75">
+                      <CheckCircle2 className="h-5 w-5 text-[#1F8A4C] shrink-0 mt-0.5" />
+                      <span>{item}</span>
+                    </li>
+                  ))}
+                </ul>
                 <div className="flex flex-wrap gap-3">
                   <Button
-                    className="rounded-md bg-[#0070D0] hover:bg-[#0058A8] text-white px-6"
-                    onClick={() => navigate("/signup?role=instructor")}
+                    className="rounded-full bg-[#1F8A4C] hover:bg-[#166B3A] text-white px-6 h-11"
+                    onClick={() => navigate("/about")}
                   >
-                    Apply as instructor
-                    <ArrowRight className="ml-2 h-4 w-4" />
+                    About us
                   </Button>
                   <Button
                     variant="outline"
-                    className="rounded-md border-[#0070D0] text-[#0070D0] hover:bg-[#0070D0]/5"
-                    onClick={() => navigate("/login")}
+                    className="rounded-full border-[#0B0B0B]/15 text-[#0B0B0B] hover:bg-[#0B0B0B]/5 px-6 h-11"
+                    onClick={() => navigate("/institution-signup")}
                   >
-                    Instructor login
+                    Partner institution sign up
                   </Button>
                 </div>
-              </div>
-              <div className="relative min-h-[260px] lg:min-h-[300px]">
-                <SafeImage
-                  src={HOME_IMAGES.certificate}
-                  fallback={DEFAULT_IMAGE}
-                  alt="Teaching and certification"
-                  className="absolute inset-0 w-full h-full"
-                />
               </div>
             </div>
           </FadeIn>
@@ -635,36 +526,34 @@ const Index = () => {
       </section>
 
       {/* ─── FINAL CTA ─── */}
-      <section className="py-16 md:py-20 bg-[#0070D0]">
+      <section className="py-16 md:py-24 bg-[#1F8A4C]">
         <FadeIn className="container mx-auto px-4 text-center">
-          <BookOpen className="h-12 w-12 text-[#FCC400] mx-auto mb-6" />
-          <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
-            Ready to study, learn, and succeed globally?
+          <h2 className="text-3xl md:text-5xl font-extrabold tracking-tight text-white mb-4">
+            Join learners succeeding with {HUB.name}
           </h2>
-          <p className="text-lg text-white/80 mb-8 max-w-2xl mx-auto">
-            Join {HUB.name} today. Create your free account, pick a program, and start your journey with{" "}
-            {HUB.company}.
+          <p className="text-lg text-white/85 mb-8 max-w-2xl mx-auto">
+            Invest in your language skills today and open the door to a better tomorrow.
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <Button
               size="lg"
-              className="h-12 px-10 rounded-md bg-[#FCC400] hover:bg-[#E69545] text-[#0070D0] font-bold"
+              className="h-12 px-10 rounded-full bg-white text-[#1F8A4C] hover:bg-white/90 font-bold"
               onClick={() => navigate("/signup")}
             >
-              Create free account
+              Learn for free
             </Button>
             <Button
               size="lg"
               variant="outline"
-              className="h-12 px-10 rounded-md border-white text-white hover:bg-white/10 bg-transparent"
+              className="h-12 px-10 rounded-full border-white text-white hover:bg-white/10 bg-transparent font-semibold"
               onClick={() => navigate("/login")}
             >
-              Sign in
+              Log in
             </Button>
             <Button
               size="lg"
               variant="outline"
-              className="h-12 px-10 rounded-md border-[#FCC400] text-[#FCC400] hover:bg-[#FCC400]/10 bg-transparent"
+              className="h-12 px-10 rounded-full border-white/50 text-white hover:bg-white/10 bg-transparent font-semibold"
               onClick={() => navigate("/institution-signup")}
             >
               Partner institution sign up

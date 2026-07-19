@@ -12,74 +12,49 @@ export const HOME_IMAGES = {
 
 export const HOME_MISSION = {
   vision:
-    "F&R Rwanda Ltd — School of Fluency and Proficiency — helping learners build language skills in English, French, and Kinyarwanda, succeed globally, and open doors to academic and career growth.",
+    "F&R Rwanda Ltd — School of Fluency and Proficiency — helping learners master English, French, and Kinyarwanda through interactive online classes.",
   mission:
-    "To deliver quality language education at affordable prices through interactive online classes, flexible schedules, and experienced instructors.",
+    "To deliver quality language education at affordable prices with experienced instructors, flexible schedules, and personalized feedback.",
 } as const;
 
-export const EXAM_PROGRAMS = [
-  {
-    title: "IELTS Preparation",
-    desc: "Academic & general training with mock tests and speaking practice.",
-    image: HOME_UNIQUE_IMAGES.examIelts,
-  },
-  {
-    title: "TOEFL Preparation",
-    desc: "Reading, listening, speaking, and writing for university admissions.",
-    image: HOME_UNIQUE_IMAGES.examToefl,
-  },
-  {
-    title: "Duolingo (DET)",
-    desc: "Adaptive English test strategies and timed practice sessions.",
-    image: HOME_UNIQUE_IMAGES.examDuolingo,
-  },
-  {
-    title: "PTE Academic",
-    desc: "Computer-based English proficiency for global study pathways.",
-    image: HOME_UNIQUE_IMAGES.examPte,
-  },
-  {
-    title: "SAT / GRE / GMAT",
-    desc: "Structured prep for undergraduate and graduate admissions abroad.",
-    image: HOME_UNIQUE_IMAGES.examSat,
-  },
-  {
-    title: "Cambridge English",
-    desc: "FCE, CAE, and CPE pathways with skills-based modules.",
-    image: HOME_UNIQUE_IMAGES.examCambridge,
-  },
-] as const;
-
+/** Only language courses taught at F&R Rwanda */
 export const LANGUAGE_PROGRAMS = [
   {
     title: "English",
-    subtitle: "Academic · Business · General",
+    subtitle: "Academic · Business · Everyday",
+    flag: "🇬🇧",
     image: HOME_UNIQUE_IMAGES.langEnglish,
   },
   {
     title: "French",
-    subtitle: "DELF / DALF Preparation",
+    subtitle: "Conversation · DELF / DALF ready",
+    flag: "🇫🇷",
     image: HOME_UNIQUE_IMAGES.langFrench,
   },
   {
-    title: "German",
-    subtitle: "Goethe · TestDaF",
-    image: HOME_UNIQUE_IMAGES.langGerman,
-  },
-  {
-    title: "Korean",
-    subtitle: "TOPIK Preparation",
+    title: "Kinyarwanda",
+    subtitle: "Communication · Culture · Confidence",
+    flag: "🇷🇼",
     image: HOME_UNIQUE_IMAGES.langKorean,
   },
+] as const;
+
+export const WHY_LEARN = [
   {
-    title: "Chinese",
-    subtitle: "HSK Preparation",
-    image: HOME_UNIQUE_IMAGES.langChinese,
+    title: "Learn with confidence",
+    desc: "Courses created for real conversations — speaking, listening, reading, and writing with expert guidance.",
   },
   {
-    title: "Japanese & More",
-    subtitle: "JLPT · Spanish · Arabic",
-    image: HOME_UNIQUE_IMAGES.langJapanese,
+    title: "Learn for real life",
+    desc: "Live online classes and practice that prepare you for school, work, travel, and everyday situations.",
+  },
+  {
+    title: "Learn your way",
+    desc: "Flexible schedules, monthly or termly plans, and VIP one-on-one options that fit your lifestyle.",
+  },
+  {
+    title: "Learn together",
+    desc: "Interactive sessions, personalized feedback, and a supportive community of language learners.",
   },
 ] as const;
 
@@ -91,97 +66,98 @@ export const STUDENT_FEATURES = [
   },
   {
     title: "Course Enrollment",
-    desc: "Browse programs and apply online in minutes.",
+    desc: "Browse language programs and apply online in minutes.",
     image: HOME_UNIQUE_IMAGES.featEnroll,
   },
   {
     title: "Secure Payments",
-    desc: "Pay safely with Stripe for paid courses.",
+    desc: "Pay safely online for your language course.",
     image: HOME_UNIQUE_IMAGES.featPayment,
   },
   {
     title: "Live Classes",
-    desc: "Join Zoom sessions with expert instructors.",
+    desc: "Join live sessions with expert language instructors.",
     image: HOME_UNIQUE_IMAGES.featLive,
   },
   {
     title: "HD Video Lessons",
-    desc: "Watch lessons and download study resources.",
+    desc: "Watch lessons and download study resources anytime.",
     image: HOME_UNIQUE_IMAGES.featVideo,
   },
   {
     title: "Certificates",
-    desc: "Earn digital certificates upon completion.",
+    desc: "Earn a digital certificate when you complete your course.",
     image: HOME_UNIQUE_IMAGES.featCert,
   },
 ] as const;
 
 export const LIVE_FEATURES = [
-  "Zoom live classes & webinars",
+  "Live online language classes",
   "Recorded session playback",
   "Live Q&A with instructors",
-  "Mock exams & assessments",
+  "Speaking practice & feedback",
 ] as const;
 
-/** Shown on homepage when the courses API is empty or unreachable */
 export const FEATURED_PROGRAM_FALLBACK = [
   {
     id: -1,
-    title: "Xander Class — IELTS & TOEFL Preparation",
+    title: "English Course",
     description:
-      "Expert-led preparation for international English exams with mock tests and live speaking practice.",
-    price: null as number | string | null,
-    duration: "12 weeks",
+      "Online English for fluency and proficiency. Monthly, termly, or VIP one-on-one options.",
+    price: 100000 as number | string | null,
+    duration: "Flexible",
     status: "Active",
-    image: HOME_UNIQUE_IMAGES.examIelts,
+    image: HOME_UNIQUE_IMAGES.langEnglish,
   },
   {
     id: -2,
-    title: "Xander French Class — TCF & TEF Preparation",
-    description: "Structured French pathways for DELF, DALF, TCF, and TEF certification goals.",
-    price: null,
-    duration: "10 weeks",
+    title: "French Course",
+    description: "Online French for conversation and confidence — flexible schedules and interactive classes.",
+    price: 100000,
+    duration: "Flexible",
     status: "Active",
-    image: HOME_UNIQUE_IMAGES.examCambridge,
+    image: HOME_UNIQUE_IMAGES.langFrench,
   },
   {
     id: -3,
-    title: "Xander AI Mastery Class",
-    description:
-      "Master modern AI tools including ChatGPT and advanced workflows for study and career growth.",
-    price: "300.00",
-    duration: "6 weeks",
+    title: "Kinyarwanda Course",
+    description: "Online Kinyarwanda for communication, culture, and everyday confidence.",
+    price: 100000,
+    duration: "Flexible",
     status: "Active",
-    image: HOME_UNIQUE_IMAGES.courseFallback1,
+    image: HOME_UNIQUE_IMAGES.langKorean,
   },
 ] as const;
 
 export const STATS = [
-  { value: "10+", label: "Exam programs" },
-  { value: "8+", label: "Languages" },
-  { value: "Live", label: "Zoom classes" },
-  { value: "Stripe", label: "Secure pay" },
+  { value: "3", label: "Languages" },
+  { value: "Live", label: "Online classes" },
+  { value: "VIP", label: "One-on-one option" },
+  { value: "RWF", label: "Affordable plans" },
 ] as const;
 
 export const TESTIMONIALS = [
   {
     name: "Sandrine U.",
-    role: "IELTS Candidate",
-    text: "The live classes and structured materials helped me feel confident before my exam.",
+    role: "English learner",
+    text: "The live classes and clear materials helped me speak with more confidence every week.",
     image: HOME_UNIQUE_IMAGES.avatarSandrine,
   },
   {
     name: "Eric N.",
-    role: "French DELF Student",
-    text: "Clear lessons, friendly instructors, and flexible scheduling — exactly what I needed.",
+    role: "French learner",
+    text: "Friendly instructors, flexible scheduling, and real conversation practice — exactly what I needed.",
     image: HOME_UNIQUE_IMAGES.avatarEric,
   },
   {
     name: "Ignace M.",
-    role: "Study Abroad Applicant",
-    text: "F&R Rwanda connected me to the right program for my international goals.",
+    role: "Kinyarwanda learner",
+    text: "F&R Rwanda made language learning practical and motivating. I use what I learn every day.",
     image: HOME_UNIQUE_IMAGES.avatarIgnace,
   },
 ] as const;
+
+/** Kept for type compatibility; homepage no longer markets exam programs. */
+export const EXAM_PROGRAMS = [] as const;
 
 export { HUB };

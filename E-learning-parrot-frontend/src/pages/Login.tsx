@@ -93,7 +93,7 @@ const Login = () => {
       "transition-all duration-200 focus-visible:ring-2",
       isInstitutionLocked
         ? "focus-visible:ring-[var(--institution-primary)]/20 focus-visible:border-[var(--institution-primary)]"
-        : "focus-visible:ring-[#0070D0]/20 focus-visible:border-[#0070D0]",
+        : "focus-visible:ring-[#1F8A4C]/20 focus-visible:border-[#1F8A4C]",
       opts?.error && "border-red-300 focus-visible:ring-red-200",
       opts?.success && "border-emerald-300 focus-visible:ring-emerald-200",
       !opts?.error && !opts?.success && "border-slate-200 hover:border-slate-300",
@@ -247,7 +247,7 @@ const Login = () => {
           {!isInstitutionLocked && (
             <NavLink
               to="/forgot-password"
-              className="text-xs font-semibold text-[#0070D0] hover:text-[#FCC400] transition-colors"
+              className="text-xs font-semibold text-[#1F8A4C] hover:text-[#1F8A4C] transition-colors"
             >
               Forgot password?
             </NavLink>
@@ -267,7 +267,7 @@ const Login = () => {
           />
           <button
             type="button"
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-[#0070D0] transition-colors"
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-[#1F8A4C] transition-colors"
             onClick={() => setShowPassword((prev) => !prev)}
             aria-label={showPassword ? "Hide password" : "Show password"}
           >
@@ -284,7 +284,7 @@ const Login = () => {
           className={
             isInstitutionLocked
               ? "data-[state=checked]:bg-[var(--institution-button-bg)] data-[state=checked]:border-[var(--institution-button-bg)]"
-              : "data-[state=checked]:bg-[#0070D0] data-[state=checked]:border-[#0070D0]"
+              : "data-[state=checked]:bg-[#1F8A4C] data-[state=checked]:border-[#1F8A4C]"
           }
         />
         <label htmlFor="remember" className="text-sm text-slate-600 cursor-pointer select-none">
@@ -299,7 +299,7 @@ const Login = () => {
         className={
           isInstitutionLocked
             ? "w-full rounded-md bg-[var(--institution-button-bg)] text-[var(--institution-button-text)] hover:opacity-90 font-bold h-12 text-base"
-            : "w-full rounded-md bg-[#0070D0] hover:bg-[#0058A8] text-white font-bold h-12 text-base"
+            : "w-full rounded-md bg-[#1F8A4C] hover:bg-[#166B3A] text-white font-bold h-12 text-base"
         }
       >
         {loading ? (
@@ -321,7 +321,7 @@ const Login = () => {
       <div className="min-h-screen bg-slate-50">
         {lockedInstitutionLoading ? (
           <div className="flex min-h-screen items-center justify-center">
-            <Loader2 className="h-8 w-8 animate-spin text-[#0070D0]" />
+            <Loader2 className="h-8 w-8 animate-spin text-[#1F8A4C]" />
           </div>
         ) : lockedInstitutionError ? (
           <div className="flex min-h-screen flex-col items-center justify-center px-4 text-center">
@@ -386,7 +386,7 @@ const Login = () => {
           <div className="rounded-2xl overflow-hidden shadow-2xl bg-white border border-slate-200">
             <div className="grid md:grid-cols-2">
               {/* Left panel — welcome message */}
-              <div className="bg-gradient-to-br from-[#0070D0] to-[#0058A8] p-8 md:p-10 text-white flex flex-col justify-center">
+              <div className="bg-gradient-to-br from-[#1F8A4C] to-[#166B3A] p-8 md:p-10 text-white flex flex-col justify-center">
                 <h1 className="text-2xl md:text-3xl font-bold mb-3">Welcome Back!</h1>
                 <p className="text-white/85 leading-relaxed mb-8">
                   It&apos;s great to see you again! Log in to continue your learning journey and pick up right where
@@ -396,7 +396,7 @@ const Login = () => {
                   {PERKS.map((text) => (
                     <li key={text} className="flex items-start gap-3 text-sm text-white/90">
                       <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-white/15">
-                        <CheckCircle2 className="h-3.5 w-3.5 text-[#FCC400]" />
+                        <CheckCircle2 className="h-3.5 w-3.5 text-[#1F8A4C]" />
                       </span>
                       {text}
                     </li>
@@ -407,7 +407,7 @@ const Login = () => {
               {/* Right panel — form */}
               <div className="p-8 md:p-10">
                 <div className="mb-6">
-                  <h2 className="text-xl font-bold text-[#0070D0]">Log In</h2>
+                  <h2 className="text-xl font-bold text-[#1F8A4C]">Log In</h2>
                   <p className="text-sm text-slate-500 mt-1">Enter your credentials to access {HUB.name}.</p>
                 </div>
 
@@ -428,7 +428,7 @@ const Login = () => {
                   <p className="text-sm text-slate-500 mb-1">Don&apos;t have an account yet?</p>
                   <NavLink
                     to="/signup"
-                    className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#0070D0] hover:text-[#FCC400] transition-colors group"
+                    className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#1F8A4C] hover:text-[#1F8A4C] transition-colors group"
                   >
                     Sign Up
                     <ArrowRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />

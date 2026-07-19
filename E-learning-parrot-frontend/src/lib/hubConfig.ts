@@ -2,25 +2,20 @@ export const HUB = {
   name: "F&R Rwanda",
   company: "F&R Rwanda Ltd",
   slogan: "Learn Today. Master Tomorrow. Succeed Globally.",
-  tagline: "School of Fluency and Proficiency — quality language education at affordable prices.",
+  tagline: "New language, new opportunities, new you — English, French, and Kinyarwanda online.",
   supportEmail: "frwanda19juillet2020@gmail.com",
   supportPhone: "+250 788 821 579",
   tiktok: "@frrwandaltd",
 } as const;
 
-export const EXAM_CATEGORIES = [
-  "IELTS Preparation",
-  "TOEFL Preparation",
-  "DELF / DALF",
-  "TCF / TEF",
-  "Cambridge English",
-] as const;
+export const EXAM_CATEGORIES = [] as const;
 
 export const LANGUAGE_CATEGORIES = [
   "English (Academic, Business, General)",
-  "French (DELF/DALF)",
+  "French (Conversation & DELF/DALF)",
   "Kinyarwanda",
 ] as const;
+
 
 export const PLATFORM_USERS = [
   {

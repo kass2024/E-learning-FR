@@ -21,7 +21,7 @@ const Footer = () => {
   ];
 
   return (
-    <footer className="bg-[#0070D0] text-white">
+    <footer className="bg-[#1F8A4C] text-white">
       <div className="container mx-auto px-4 py-12 md:py-14">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10">
           {/* Brand */}
@@ -45,7 +45,7 @@ const Footer = () => {
               href="https://www.tiktok.com/@frrwandaltd"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 text-sm text-white/80 hover:text-[#FCC400] transition-colors"
+              className="inline-flex items-center gap-2 text-sm text-white/80 hover:text-[#1F8A4C] transition-colors"
             >
               TikTok {HUB.tiktok}
             </a>
@@ -53,13 +53,13 @@ const Footer = () => {
 
           {/* Explore */}
           <div>
-            <h3 className="text-sm font-bold uppercase tracking-wider text-[#FCC400] mb-4">Explore</h3>
+            <h3 className="text-sm font-bold uppercase tracking-wider text-[#1F8A4C] mb-4">Explore</h3>
             <ul className="space-y-2.5">
               {exploreLinks.map((link) => (
                 <li key={link.to}>
                   <NavLink
                     to={link.to}
-                    className="text-sm text-white/75 hover:text-[#FCC400] transition-colors"
+                    className="text-sm text-white/75 hover:text-[#1F8A4C] transition-colors"
                   >
                     {link.label}
                   </NavLink>
@@ -70,13 +70,13 @@ const Footer = () => {
 
           {/* Important Links */}
           <div>
-            <h3 className="text-sm font-bold uppercase tracking-wider text-[#FCC400] mb-4">Important Links</h3>
+            <h3 className="text-sm font-bold uppercase tracking-wider text-[#1F8A4C] mb-4">Important Links</h3>
             <ul className="space-y-2.5">
               {importantLinks.map((link) => (
                 <li key={link.to + link.label}>
                   <NavLink
                     to={link.to}
-                    className="text-sm text-white/75 hover:text-[#FCC400] transition-colors"
+                    className="text-sm text-white/75 hover:text-[#1F8A4C] transition-colors"
                   >
                     {link.label}
                   </NavLink>
@@ -87,23 +87,23 @@ const Footer = () => {
 
           {/* Contact */}
           <div>
-            <h3 className="text-sm font-bold uppercase tracking-wider text-[#FCC400] mb-4">Contact</h3>
+            <h3 className="text-sm font-bold uppercase tracking-wider text-[#1F8A4C] mb-4">Contact</h3>
             <ul className="space-y-3 text-sm text-white/75">
               <li>
                 <a
                   href={`mailto:${HUB.supportEmail}`}
-                  className="flex items-center gap-2 hover:text-[#FCC400] transition-colors"
+                  className="flex items-center gap-2 hover:text-[#1F8A4C] transition-colors"
                 >
-                  <Mail className="w-4 h-4 text-[#FCC400] shrink-0" />
+                  <Mail className="w-4 h-4 text-[#1F8A4C] shrink-0" />
                   {HUB.supportEmail}
                 </a>
               </li>
               <li>
                 <a
                   href={`tel:${HUB.supportPhone.replace(/\s/g, "")}`}
-                  className="flex items-center gap-2 hover:text-[#FCC400] transition-colors"
+                  className="flex items-center gap-2 hover:text-[#1F8A4C] transition-colors"
                 >
-                  <Phone className="w-4 h-4 text-[#FCC400] shrink-0" />
+                  <Phone className="w-4 h-4 text-[#1F8A4C] shrink-0" />
                   {HUB.supportPhone}
                 </a>
               </li>
@@ -112,14 +112,14 @@ const Footer = () => {
                   href={`https://wa.me/${HUB.supportPhone.replace(/\D/g, "")}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center gap-2 hover:text-[#FCC400] transition-colors"
+                  className="flex items-center gap-2 hover:text-[#1F8A4C] transition-colors"
                 >
-                  <Phone className="w-4 h-4 text-[#FCC400] shrink-0" />
+                  <Phone className="w-4 h-4 text-[#1F8A4C] shrink-0" />
                   WhatsApp
                 </a>
               </li>
               <li className="flex items-start gap-2">
-                <MapPin className="w-4 h-4 text-[#FCC400] shrink-0 mt-0.5" />
+                <MapPin className="w-4 h-4 text-[#1F8A4C] shrink-0 mt-0.5" />
                 <span>Kigali, Rwanda</span>
               </li>
             </ul>
@@ -132,10 +132,10 @@ const Footer = () => {
         <div className="mt-8 pt-6 border-t border-white/10 text-xs text-white/60 flex flex-col md:flex-row items-center justify-between gap-3">
           <div>© {new Date().getFullYear()} F&R Rwanda Ltd — Your partner in language excellence.</div>
           <div className="flex items-center gap-5">
-            <NavLink to="/terms" className="hover:text-[#FCC400] transition-colors">
+            <NavLink to="/terms" className="hover:text-[#1F8A4C] transition-colors">
               Terms &amp; Conditions
             </NavLink>
-            <NavLink to="/privacy" className="hover:text-[#FCC400] transition-colors">
+            <NavLink to="/privacy" className="hover:text-[#1F8A4C] transition-colors">
               Privacy Policy
             </NavLink>
           </div>
