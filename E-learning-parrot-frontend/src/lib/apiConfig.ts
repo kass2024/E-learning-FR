@@ -88,6 +88,16 @@ export function getPublicStorageUrl(pathOrUrl?: string | null): string | null {
 export function formatCoursePrice(price: number | string | null | undefined): string {
   const value = Number(price);
   if (!value || Number.isNaN(value)) return "Free";
+
+  if (typeof window !== "undefined") {
+    const host = window.location.hostname.toLowerCase();
+    if (host.includes("frwanda") || value >= 1000) {
+      return `${value.toLocaleString("en-RW")} RWF`;
+    }
+  } else if (value >= 1000) {
+    return `${value.toLocaleString("en-US")} RWF`;
+  }
+
   return `$${value.toFixed(2)}`;
 }
 
