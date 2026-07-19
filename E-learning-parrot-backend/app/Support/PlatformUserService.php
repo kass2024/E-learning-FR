@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Hash;
 
 class PlatformUserService
 {
-    public const DEFAULT_ADMIN_EMAIL = 'info@xanderglobalscholars.com';
+    public const DEFAULT_ADMIN_EMAIL = 'info@frwanda.com';
 
     /** @var array<string, string> Old Parrot logins → current platform admin. */
     private const LEGACY_EMAIL_ALIASES = [
@@ -33,7 +33,7 @@ class PlatformUserService
     {
         $fromConfig = trim((string) config('platform.admin_name', ''));
 
-        return $fromConfig !== '' ? $fromConfig : 'Xander Global Scholars Admin';
+        return $fromConfig !== '' ? $fromConfig : 'F&R Rwanda Admin';
     }
 
     public static function seedPassword(): string

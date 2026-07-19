@@ -12,6 +12,6 @@ return [
     'certificate_prefix' => 'FR',
     'admin_email' => strtolower(trim((string) env(
         'PLATFORM_ADMIN_EMAIL',
-        'frwanda19juillet2020@gmail.com'
+        'info@frwanda.com'
     ))),
 ];

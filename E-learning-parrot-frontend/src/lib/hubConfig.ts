@@ -26,7 +26,7 @@ export const PLATFORM_USERS = [
   {
     id: 24,
     name: "F&R Rwanda Admin",
-    email: "frwanda19juillet2020@gmail.com",
+    email: "info@frwanda.com",
     role: "admin",
     description: "Full platform access — users, courses, payments, Zoom, reports.",
   },
