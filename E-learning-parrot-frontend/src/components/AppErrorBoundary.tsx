@@ -26,7 +26,10 @@ export class AppErrorBoundary extends Component<Props, State> {
 
   handleReload = () => {
     sessionStorage.removeItem("parrot_chunk_reload_once");
-    window.location.reload();
+    // Hard navigation busts stale hashed chunks after deploys.
+    const url = new URL(window.location.href);
+    url.searchParams.set("_reload", String(Date.now()));
+    window.location.replace(url.toString());
   };
 
   render() {
