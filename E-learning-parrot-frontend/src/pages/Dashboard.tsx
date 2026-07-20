@@ -336,6 +336,9 @@ const Dashboard = ({ initialRole }: DashboardProps) => {
       if (location.pathname === "/dashboard/materials") {
         return <CourseMaterials />;
       }
+      if (location.pathname === "/dashboard/instructor/quizzes") {
+        return <InstructorQuizzes />;
+      }
       if (location.pathname === "/dashboard/zoom" || location.pathname === "/dashboard/zoom-meetings") {
         return <ZoomManagement initialMeetingType="meeting" />;
       }
@@ -365,6 +368,15 @@ const Dashboard = ({ initialRole }: DashboardProps) => {
       }
       if (location.pathname === "/dashboard/course-approval") {
         return <CourseApproval />;
+      }
+      if (location.pathname === "/dashboard/my-courses") {
+        return <InstructorMyCourses />;
+      }
+      if (location.pathname === "/dashboard/instructor/create-course") {
+        return <InstructorCreateCourse />;
+      }
+      if (location.pathname.startsWith("/dashboard/instructor/edit-course/")) {
+        return <InstructorEditCourse />;
       }
       if (location.pathname === "/dashboard/admin") {
         return <AdminDashboard />;

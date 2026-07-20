@@ -155,6 +155,7 @@ const AdminDashboard = () => {
             ["/dashboard/zoom-webinars", "Webinars"],
             ["/dashboard/appointments", "Appointments"],
             ["/dashboard/materials", "Materials"],
+            ["/dashboard/instructor/quizzes", "Assessment"],
           ].map(([path, label]) => (
             <Button key={path} variant="outline" size="sm" onClick={() => navigate(path)}>
               {label}
