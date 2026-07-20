@@ -36,8 +36,7 @@ class CourseMaterialController extends Controller
     }
 
     /**
-     * Portal admins/staff/partners may upload on any tenant-owned course.
-     * Instructors may only upload/delete on courses assigned to them.
+     * Admins may view all tenant courses; uploads/deletes require assign_cours.
      */
     private function canMutateMaterials(?User $user, Course $course): bool
     {
@@ -47,10 +46,6 @@ class CourseMaterialController extends Controller
 
         if (!PlatformTenantScope::userOwnsCourse($user, $course)) {
             return false;
-        }
-
-        if (InstructorLookup::isPortalTeacher($user)) {
-            return true;
         }
 
         return $user->assignedCourses()->where('courses.id', $course->id)->exists();
