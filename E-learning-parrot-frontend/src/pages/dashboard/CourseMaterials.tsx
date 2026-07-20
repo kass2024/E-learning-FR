@@ -59,6 +59,7 @@ export default function CourseMaterials() {
 
   const [instructors, setInstructors] = useState<InstructorRow[]>([]);
   const [selectedInstructorId, setSelectedInstructorId] = useState<number | "all">("all");
+  const [myAssignedCourseIds, setMyAssignedCourseIds] = useState<Set<number>>(new Set());
 
   const [courses, setCourses] = useState<Course[]>([]);
   const [coursesLoading, setCoursesLoading] = useState(true);
@@ -81,15 +82,28 @@ export default function CourseMaterials() {
 
     try {
       if (isAdmin) {
-        const { data } = await fetchDashboardCached("instructors-with-courses", getInstructorsWithCourses);
+        const email = localStorage.getItem("parrot_user_email") ?? "";
+        const [{ data }, mine] = await Promise.all([
+          fetchDashboardCached("instructors-with-courses", getInstructorsWithCourses),
+          email
+            ? getInstructorAssignedCourses(email).catch(() => ({ courses: [] as Course[] }))
+            : Promise.resolve({ courses: [] as Course[] }),
+        ]);
         const list = Array.isArray(data) ? data : [];
         setInstructors(list);
+
+        const mineList = Array.isArray(mine?.courses) ? mine.courses : [];
+        setMyAssignedCourseIds(new Set(mineList.map((c: Course) => c.id).filter(Boolean)));
 
         const courseMap = new Map<number, Course>();
         for (const instructor of list) {
           for (const course of instructor.assigned_courses ?? instructor.assignedCourses ?? []) {
             if (course?.id) courseMap.set(course.id, course);
           }
+        }
+        // Include admin's own assigned courses even if they are not listed under role=instructor.
+        for (const course of mineList) {
+          if (course?.id) courseMap.set(course.id, course);
         }
         const allCourses = Array.from(courseMap.values());
         setCourses(allCourses);
@@ -103,6 +117,7 @@ export default function CourseMaterials() {
       const res = await getInstructorAssignedCourses(email);
       const list = Array.isArray(res?.courses) ? res.courses : [];
       setCourses(list);
+      setMyAssignedCourseIds(new Set(list.map((c: Course) => c.id).filter(Boolean)));
       if (!selectedCourseId && list.length > 0) {
         setSelectedCourseId(list[0].id);
       }
@@ -119,6 +134,9 @@ export default function CourseMaterials() {
     const instructor = instructors.find((i) => i.id === selectedInstructorId);
     return instructor?.assigned_courses ?? [];
   }, [courses, instructors, isAdmin, selectedInstructorId]);
+
+  const canManageSelected =
+    selectedCourseId != null && myAssignedCourseIds.has(selectedCourseId);
 
   useEffect(() => {
     if (!visibleCourses.length) return;
@@ -190,7 +208,7 @@ export default function CourseMaterials() {
   );
 
   const handlePCloudUpload = async (files: File[], description?: string) => {
-    if (!selectedCourseId) return;
+    if (!selectedCourseId || !canManageSelected) return;
     setUploading(true);
     let ok = 0;
     let fail = 0;
@@ -229,6 +247,7 @@ export default function CourseMaterials() {
   };
 
   const handleDeleteMaterial = async (material: LearnerCourseMaterial) => {
+    if (!canManageSelected) return;
     const courseId = material.course_id ?? selectedCourseId;
     if (!courseId || !material.id) return;
     setDeletingId(material.id);
@@ -260,7 +279,7 @@ export default function CourseMaterials() {
             <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white">Materials Dashboard</h1>
             <p className="text-white/80 text-sm sm:text-base">
               {isAdmin
-                ? "Browse all instructor course materials and live class recordings."
+                ? "Browse all instructor materials. Upload and delete only on courses assigned to you."
                 : "Manage materials for your assigned courses in a DataTable view."}
             </p>
             </div>
@@ -350,6 +369,15 @@ export default function CourseMaterials() {
                   }
                 >
                   <p className="font-medium">{course.title}</p>
+                  {isAdmin && (
+                    <p
+                      className={`text-[11px] mt-0.5 ${
+                        selectedCourseId === course.id ? "text-white/70" : "text-muted-foreground"
+                      }`}
+                    >
+                      {myAssignedCourseIds.has(course.id) ? "Assigned to you — can upload" : "View only"}
+                    </p>
+                  )}
                 </button>
               ))}
           </CardContent>
@@ -359,24 +387,38 @@ export default function CourseMaterials() {
         <div className="lg:col-span-3 space-y-8">
 
           {/* Upload Section */}
-          <Card className="p-4 sm:p-6 shadow-sm">
-            <div className="mb-4">
-              <h2 className="text-lg sm:text-xl font-semibold flex items-center gap-2">
-                <UploadCloud className="w-5 h-5 text-primary" />
-                Upload Materials
-              </h2>
-              <p className="text-muted-foreground text-xs sm:text-sm">
-                Files upload to pCloud folder #31887143130 — only metadata is saved in the LMS.
-              </p>
-            </div>
-            <MaterialUploadZone
-              disabled={!selectedCourseId}
-              uploading={uploading}
-              uploadProgress={uploadProgress}
-              uploadingFileName={uploadingFileName}
-              onUpload={handlePCloudUpload}
-            />
-          </Card>
+          {canManageSelected ? (
+            <Card className="p-4 sm:p-6 shadow-sm">
+              <div className="mb-4">
+                <h2 className="text-lg sm:text-xl font-semibold flex items-center gap-2">
+                  <UploadCloud className="w-5 h-5 text-primary" />
+                  Upload Materials
+                </h2>
+                <p className="text-muted-foreground text-xs sm:text-sm">
+                  Files upload to pCloud folder #31887143130 — only metadata is saved in the LMS.
+                </p>
+              </div>
+              <MaterialUploadZone
+                disabled={!selectedCourseId}
+                uploading={uploading}
+                uploadProgress={uploadProgress}
+                uploadingFileName={uploadingFileName}
+                onUpload={handlePCloudUpload}
+              />
+            </Card>
+          ) : selectedCourseId ? (
+            <Card className="p-4 sm:p-6 shadow-sm border-dashed">
+              <div className="flex items-start gap-3">
+                <Eye className="w-5 h-5 text-muted-foreground mt-0.5 shrink-0" />
+                <div>
+                  <h2 className="text-lg font-semibold">View only</h2>
+                  <p className="text-muted-foreground text-sm mt-1">
+                    You can browse materials for this course. To upload or delete files, assign the course to yourself in Course Management.
+                  </p>
+                </div>
+              </div>
+            </Card>
+          ) : null}
 
           {/* Materials tabs */}
           <Tabs value={mainTab} onValueChange={(v) => setMainTab(v as "files" | "content" | "recordings")}>
@@ -406,6 +448,7 @@ export default function CourseMaterials() {
                     loading={materialsLoading}
                     onDelete={handleDeleteMaterial}
                     deletingId={deletingId}
+                    readOnly={!canManageSelected}
                   />
                 ) : (
                   <p className="text-center text-muted-foreground py-12">Select a course to manage materials.</p>

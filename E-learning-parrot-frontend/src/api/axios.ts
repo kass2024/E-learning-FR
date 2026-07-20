@@ -3467,6 +3467,7 @@ export type CourseMaterialPayload = {
 
 export type CourseMaterialsResponse = {
   course?: { id: number; title?: string; description?: string };
+  can_upload?: boolean;
   materials: LearnerCourseMaterial[];
 };
 
