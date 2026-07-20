@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo, useRef } from "react";
+import { useSearchParams } from "react-router-dom";
 import {
   Card, CardHeader, CardTitle, CardDescription, CardContent
 } from "@/components/ui/card";
@@ -21,6 +22,7 @@ import { useToast } from "@/components/ui/use-toast";
 import {
   deleteCourseMaterial,
   getCourseMaterials,
+  getCourses,
   getInstructorAssignedCourses,
   getInstructorsWithCourses,
   uploadCourseMaterialDirectPCloud,
@@ -52,10 +54,12 @@ type InstructorRow = {
 
 export default function CourseMaterials() {
   const { toast } = useToast();
-  const isAdmin =
-    typeof window !== "undefined" &&
-    (localStorage.getItem("parrot_user_role") === "admin" ||
-      localStorage.getItem("parrot_user_role") === "staff");
+  const [searchParams] = useSearchParams();
+  const role =
+    typeof window !== "undefined"
+      ? (localStorage.getItem("parrot_user_role") || "").toLowerCase()
+      : "";
+  const isAdmin = role === "admin" || role === "staff" || role === "partner_company";
 
   const [instructors, setInstructors] = useState<InstructorRow[]>([]);
   const [selectedInstructorId, setSelectedInstructorId] = useState<number | "all">("all");
@@ -64,7 +68,12 @@ export default function CourseMaterials() {
   const [courses, setCourses] = useState<Course[]>([]);
   const [coursesLoading, setCoursesLoading] = useState(true);
   const [coursesError, setCoursesError] = useState<string | null>(null);
-  const [selectedCourseId, setSelectedCourseId] = useState<number | null>(null);
+  const initialCourseId = (() => {
+    const raw = searchParams.get("courseId");
+    const n = raw ? Number(raw) : NaN;
+    return Number.isFinite(n) && n > 0 ? n : null;
+  })();
+  const [selectedCourseId, setSelectedCourseId] = useState<number | null>(initialCourseId);
 
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
@@ -83,33 +92,49 @@ export default function CourseMaterials() {
     try {
       if (isAdmin) {
         const email = localStorage.getItem("parrot_user_email") ?? "";
-        const [{ data }, mine] = await Promise.all([
-          fetchDashboardCached("instructors-with-courses", getInstructorsWithCourses),
+        const [allCoursesList, instructorsPayload, mine] = await Promise.all([
+          getCourses().catch(() => [] as Course[]),
+          fetchDashboardCached("instructors-with-courses", getInstructorsWithCourses).catch(() => ({
+            data: [] as InstructorRow[],
+          })),
           email
             ? getInstructorAssignedCourses(email).catch(() => ({ courses: [] as Course[] }))
             : Promise.resolve({ courses: [] as Course[] }),
         ]);
-        const list = Array.isArray(data) ? data : [];
-        setInstructors(list);
+        const list = Array.isArray(instructorsPayload?.data)
+          ? instructorsPayload.data
+          : Array.isArray(instructorsPayload)
+            ? instructorsPayload
+            : [];
+        setInstructors(list as InstructorRow[]);
 
         const mineList = Array.isArray(mine?.courses) ? mine.courses : [];
         setMyAssignedCourseIds(new Set(mineList.map((c: Course) => c.id).filter(Boolean)));
 
         const courseMap = new Map<number, Course>();
-        for (const instructor of list) {
-          for (const course of instructor.assigned_courses ?? instructor.assignedCourses ?? []) {
+        // Portal admins see every tenant course so they can upload materials without Assign first.
+        for (const course of Array.isArray(allCoursesList) ? allCoursesList : []) {
+          if (course?.id) courseMap.set(course.id, course);
+        }
+        for (const instructor of list as InstructorRow[]) {
+          for (const course of instructor.assigned_courses ?? []) {
             if (course?.id) courseMap.set(course.id, course);
           }
         }
-        // Include admin's own assigned courses even if they are not listed under role=instructor.
         for (const course of mineList) {
           if (course?.id) courseMap.set(course.id, course);
         }
-        const allCourses = Array.from(courseMap.values());
+        const allCourses = Array.from(courseMap.values()).sort((a, b) =>
+          (a.title || "").localeCompare(b.title || ""),
+        );
         setCourses(allCourses);
-        if (!selectedCourseId && allCourses.length > 0) {
-          setSelectedCourseId(allCourses[0].id);
-        }
+        const preferred =
+          (initialCourseId && allCourses.some((c) => c.id === initialCourseId)
+            ? initialCourseId
+            : null) ??
+          selectedCourseId ??
+          (allCourses.length > 0 ? allCourses[0].id : null);
+        if (preferred) setSelectedCourseId(preferred);
         return;
       }
 
@@ -118,9 +143,11 @@ export default function CourseMaterials() {
       const list = Array.isArray(res?.courses) ? res.courses : [];
       setCourses(list);
       setMyAssignedCourseIds(new Set(list.map((c: Course) => c.id).filter(Boolean)));
-      if (!selectedCourseId && list.length > 0) {
-        setSelectedCourseId(list[0].id);
-      }
+      const preferred =
+        (initialCourseId && list.some((c) => c.id === initialCourseId) ? initialCourseId : null) ??
+        selectedCourseId ??
+        (list.length > 0 ? list[0].id : null);
+      if (preferred) setSelectedCourseId(preferred);
     } catch (e: any) {
       setCoursesError(e?.response?.data?.message || e.message || "Unable to load courses");
       setCourses([]);
@@ -135,8 +162,9 @@ export default function CourseMaterials() {
     return instructor?.assigned_courses ?? [];
   }, [courses, instructors, isAdmin, selectedInstructorId]);
 
+  // Admins/staff/partners can upload on any tenant course; instructors need assignment.
   const canManageSelected =
-    selectedCourseId != null && myAssignedCourseIds.has(selectedCourseId);
+    selectedCourseId != null && (isAdmin || myAssignedCourseIds.has(selectedCourseId));
 
   useEffect(() => {
     if (!visibleCourses.length) return;
@@ -279,7 +307,7 @@ export default function CourseMaterials() {
             <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white">Materials Dashboard</h1>
             <p className="text-white/80 text-sm sm:text-base">
               {isAdmin
-                ? "Browse all instructor materials. Upload and delete only on courses assigned to you."
+                ? "Browse and upload materials for any course. Select a course, then drop files into pCloud."
                 : "Manage materials for your assigned courses in a DataTable view."}
             </p>
             </div>
@@ -375,7 +403,7 @@ export default function CourseMaterials() {
                         selectedCourseId === course.id ? "text-white/70" : "text-muted-foreground"
                       }`}
                     >
-                      {myAssignedCourseIds.has(course.id) ? "Assigned to you — can upload" : "View only"}
+                      {myAssignedCourseIds.has(course.id) ? "Assigned to you" : "Can upload"}
                     </p>
                   )}
                 </button>
@@ -413,7 +441,7 @@ export default function CourseMaterials() {
                 <div>
                   <h2 className="text-lg font-semibold">View only</h2>
                   <p className="text-muted-foreground text-sm mt-1">
-                    You can browse materials for this course. To upload or delete files, assign the course to yourself in Course Management.
+                    You can browse materials for this course. To upload or delete files, ask an admin to assign the course to you in Course Management.
                   </p>
                 </div>
               </div>
