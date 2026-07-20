@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo, useRef } from "react";
+import { useSearchParams } from "react-router-dom";
 import {
   Card, CardHeader, CardTitle, CardDescription, CardContent
 } from "@/components/ui/card";
@@ -34,6 +35,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { GraduationCap, UserRound, FolderOpen } from "lucide-react";
 import ParrotLogo from "@/components/ParrotLogo";
 import { isFileMaterial } from "@/lib/materialFileUtils";
+import { resolveInstructorEmail } from "@/lib/dashboardUser";
 
 // Course interface
 interface Course {
@@ -48,14 +50,17 @@ type InstructorRow = {
   name?: string | null;
   email?: string | null;
   assigned_courses?: Course[];
+  assignedCourses?: Course[];
 };
 
 export default function CourseMaterials() {
   const { toast } = useToast();
-  const isAdmin =
-    typeof window !== "undefined" &&
-    (localStorage.getItem("parrot_user_role") === "admin" ||
-      localStorage.getItem("parrot_user_role") === "staff");
+  const [searchParams] = useSearchParams();
+  const role =
+    typeof window !== "undefined"
+      ? (localStorage.getItem("parrot_user_role") || "").toLowerCase()
+      : "";
+  const isAdmin = role === "admin" || role === "staff" || role === "partner_company";
 
   const [instructors, setInstructors] = useState<InstructorRow[]>([]);
   const [selectedInstructorId, setSelectedInstructorId] = useState<number | "all">("all");
@@ -64,7 +69,12 @@ export default function CourseMaterials() {
   const [courses, setCourses] = useState<Course[]>([]);
   const [coursesLoading, setCoursesLoading] = useState(true);
   const [coursesError, setCoursesError] = useState<string | null>(null);
-  const [selectedCourseId, setSelectedCourseId] = useState<number | null>(null);
+  const initialCourseId = (() => {
+    const raw = searchParams.get("courseId");
+    const n = raw ? Number(raw) : NaN;
+    return Number.isFinite(n) && n > 0 ? n : null;
+  })();
+  const [selectedCourseId, setSelectedCourseId] = useState<number | null>(initialCourseId);
 
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
@@ -81,8 +91,8 @@ export default function CourseMaterials() {
     setCoursesError(null);
 
     try {
+      const email = resolveInstructorEmail();
       if (isAdmin) {
-        const email = localStorage.getItem("parrot_user_email") ?? "";
         const [{ data }, mine] = await Promise.all([
           fetchDashboardCached("instructors-with-courses", getInstructorsWithCourses),
           email
@@ -90,37 +100,44 @@ export default function CourseMaterials() {
             : Promise.resolve({ courses: [] as Course[] }),
         ]);
         const list = Array.isArray(data) ? data : [];
-        setInstructors(list);
+        setInstructors(list as InstructorRow[]);
 
         const mineList = Array.isArray(mine?.courses) ? mine.courses : [];
         setMyAssignedCourseIds(new Set(mineList.map((c: Course) => c.id).filter(Boolean)));
 
         const courseMap = new Map<number, Course>();
-        for (const instructor of list) {
+        for (const instructor of list as InstructorRow[]) {
           for (const course of instructor.assigned_courses ?? instructor.assignedCourses ?? []) {
             if (course?.id) courseMap.set(course.id, course);
           }
         }
-        // Include admin's own assigned courses even if they are not listed under role=instructor.
+        // Admin's own assigned courses (role=admin is not in instructors-with-courses).
         for (const course of mineList) {
           if (course?.id) courseMap.set(course.id, course);
         }
-        const allCourses = Array.from(courseMap.values());
+        const allCourses = Array.from(courseMap.values()).sort((a, b) =>
+          (a.title || "").localeCompare(b.title || ""),
+        );
         setCourses(allCourses);
-        if (!selectedCourseId && allCourses.length > 0) {
-          setSelectedCourseId(allCourses[0].id);
-        }
+        const preferred =
+          (initialCourseId && allCourses.some((c) => c.id === initialCourseId)
+            ? initialCourseId
+            : null) ??
+          selectedCourseId ??
+          (allCourses.length > 0 ? allCourses[0].id : null);
+        if (preferred) setSelectedCourseId(preferred);
         return;
       }
 
-      const email = localStorage.getItem("parrot_user_email") ?? "";
       const res = await getInstructorAssignedCourses(email);
       const list = Array.isArray(res?.courses) ? res.courses : [];
       setCourses(list);
       setMyAssignedCourseIds(new Set(list.map((c: Course) => c.id).filter(Boolean)));
-      if (!selectedCourseId && list.length > 0) {
-        setSelectedCourseId(list[0].id);
-      }
+      const preferred =
+        (initialCourseId && list.some((c) => c.id === initialCourseId) ? initialCourseId : null) ??
+        selectedCourseId ??
+        (list.length > 0 ? list[0].id : null);
+      if (preferred) setSelectedCourseId(preferred);
     } catch (e: any) {
       setCoursesError(e?.response?.data?.message || e.message || "Unable to load courses");
       setCourses([]);
@@ -279,7 +296,7 @@ export default function CourseMaterials() {
             <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white">Materials Dashboard</h1>
             <p className="text-white/80 text-sm sm:text-base">
               {isAdmin
-                ? "Browse all instructor materials. Upload and delete only on courses assigned to you."
+                ? "Browse instructor materials. Upload and delete on courses assigned to you."
                 : "Manage materials for your assigned courses in a DataTable view."}
             </p>
             </div>
