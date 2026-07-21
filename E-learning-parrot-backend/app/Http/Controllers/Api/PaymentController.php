@@ -105,12 +105,16 @@ class PaymentController extends Controller
     public function paymentConfig()
     {
         $mopayReady = $this->mopayPayments->isConfigured();
+        $settings = \App\Models\SiteSetting::current();
+        $receiver = $settings->paymentReceiverPayload();
 
         return response()->json([
             'provider' => 'mopay',
             'configured' => $mopayReady,
             'currency' => strtoupper((string) config('services.mopay.default_currency', 'RWF')),
             'default_mno' => config('services.mopay.default_mno', 'mtn'),
+            'receiver_phone' => $receiver['display_momo_phone'],
+            'receiver_name' => $receiver['momo_receiver_name'],
             'guidelines' => [
                 'packs' => [
                     ['name' => 'Pack Intensif', 'online' => '80 000 RWF', 'in_person' => '150 000 RWF', 'duration' => '1 mois'],
@@ -121,20 +125,20 @@ class PaymentController extends Controller
                     [
                         'type' => 'bank',
                         'label' => 'Equity Bank',
-                        'account_name' => 'Kalisa Valens',
+                        'account_name' => $receiver['momo_receiver_name'],
                         'account_number' => '4015101074908',
                     ],
                     [
                         'type' => 'momo',
                         'label' => 'MTN Mobile Money',
-                        'account_name' => 'Kalisa Valens',
-                        'phone' => '0788 821 579',
+                        'account_name' => $receiver['momo_receiver_name'],
+                        'phone' => $receiver['display_momo_phone'],
                         'ussd' => '*182#',
                     ],
                     [
                         'type' => 'whatsapp',
                         'label' => 'WhatsApp confirmation',
-                        'phone' => '+250 788 821 579',
+                        'phone' => $receiver['display_whatsapp_phone'],
                     ],
                 ],
                 'note' => 'Envoyez la preuve de paiement pour confirmation.',

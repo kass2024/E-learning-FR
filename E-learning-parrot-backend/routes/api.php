@@ -19,6 +19,7 @@ use App\Http\Controllers\Api\AvailableScheduleController;
 use App\Http\Controllers\Api\StudyShiftController;
 use App\Http\Controllers\Api\LiveZoomCohortController;
 use App\Http\Controllers\Api\PaymentController;
+use App\Http\Controllers\Api\PaymentSettingsController;
 use App\Http\Controllers\Api\AdminPayoutController;
 use App\Http\Controllers\Api\AdminReportsController;
 use App\Http\Controllers\Api\SystemController;
@@ -101,6 +102,8 @@ Route::prefix('admin')->group(function () {
     Route::put('site-settings/promo-banner', [PromoBannerController::class, 'update']);
     Route::get('site-settings/star-promo-banner', [StarPromoBannerController::class, 'show']);
     Route::put('site-settings/star-promo-banner', [StarPromoBannerController::class, 'update']);
+    Route::get('site-settings/payment-receiver', [PaymentSettingsController::class, 'show']);
+    Route::put('site-settings/payment-receiver', [PaymentSettingsController::class, 'update']);
 
     // Study shifts (learner registration)
     Route::get('study-shifts', [StudyShiftController::class, 'index']);

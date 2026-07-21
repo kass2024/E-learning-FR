@@ -23,6 +23,9 @@ class SiteSetting extends Model
         'star_banner_background_color',
         'star_banner_text_color',
         'star_banner_expires_at',
+        'momo_receiver_phone',
+        'momo_receiver_name',
+        'momo_whatsapp_phone',
     ];
 
     protected $casts = [
@@ -44,7 +47,72 @@ class SiteSetting extends Model
             'star_banner_published' => false,
             'star_banner_background_color' => '#D4AF37',
             'star_banner_text_color' => '#FFFFFF',
+            'momo_receiver_phone' => '0788821579',
+            'momo_receiver_name' => 'Kalisa Valens',
+            'momo_whatsapp_phone' => '+250788821579',
         ]);
+    }
+
+    /** Digits-only Rwanda MoMo / phone for MoPay transfer destination. */
+    public function resolvedMomoReceiverPhone(): string
+    {
+        $fromSettings = preg_replace('/\D+/', '', (string) ($this->momo_receiver_phone ?? '')) ?: '';
+        if ($fromSettings !== '') {
+            return $fromSettings;
+        }
+
+        return preg_replace('/\D+/', '', (string) config('services.mopay.receiver_account_no', '0788821579')) ?: '0788821579';
+    }
+
+    public function resolvedMomoReceiverName(): string
+    {
+        $name = trim((string) ($this->momo_receiver_name ?? ''));
+
+        return $name !== '' ? $name : 'Kalisa Valens';
+    }
+
+    public function resolvedMomoWhatsappPhone(): string
+    {
+        $raw = trim((string) ($this->momo_whatsapp_phone ?? ''));
+        if ($raw !== '') {
+            return $this->formatDisplayPhone($raw);
+        }
+
+        return $this->formatDisplayPhone($this->resolvedMomoReceiverPhone(), true);
+    }
+
+    public function formatDisplayPhone(string $raw, bool $international = false): string
+    {
+        $digits = preg_replace('/\D+/', '', $raw) ?: '';
+        if (str_starts_with($digits, '250') && strlen($digits) >= 12) {
+            $local = substr($digits, 3);
+        } elseif (str_starts_with($digits, '0') && strlen($digits) >= 10) {
+            $local = substr($digits, 1);
+        } else {
+            $local = $digits;
+        }
+
+        if (strlen($local) === 9) {
+            $pretty = '0' . substr($local, 0, 3) . ' ' . substr($local, 3, 3) . ' ' . substr($local, 6, 3);
+            if ($international) {
+                return '+250 ' . substr($local, 0, 3) . ' ' . substr($local, 3, 3) . ' ' . substr($local, 6, 3);
+            }
+
+            return $pretty;
+        }
+
+        return $raw !== '' ? $raw : ($international ? '+250 788 821 579' : '0788 821 579');
+    }
+
+    public function paymentReceiverPayload(): array
+    {
+        return [
+            'momo_receiver_phone' => $this->momo_receiver_phone ?: $this->formatDisplayPhone($this->resolvedMomoReceiverPhone()),
+            'momo_receiver_name' => $this->resolvedMomoReceiverName(),
+            'momo_whatsapp_phone' => $this->momo_whatsapp_phone ?: $this->resolvedMomoWhatsappPhone(),
+            'display_momo_phone' => $this->formatDisplayPhone($this->resolvedMomoReceiverPhone()),
+            'display_whatsapp_phone' => $this->resolvedMomoWhatsappPhone(),
+        ];
     }
 
     public function promoBannerPayload(): array

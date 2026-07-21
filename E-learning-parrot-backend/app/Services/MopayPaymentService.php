@@ -181,7 +181,10 @@ class MopayPaymentService
         $base = rtrim((string) config('services.mopay.server_base_url'), '/');
         $currency = (string) config('services.mopay.default_currency', 'RWF');
         $country = strtolower((string) config('services.mopay.default_country_code', 'rw'));
-        $receiver = trim((string) config('services.mopay.receiver_account_no'));
+        $receiver = trim(\App\Models\SiteSetting::current()->resolvedMomoReceiverPhone());
+        if ($receiver === '') {
+            $receiver = trim((string) config('services.mopay.receiver_account_no'));
+        }
         $useTransfer = $receiver !== '';
 
         $url = $useTransfer ? $base . '/api/v1/payment' : $base . '/api/v2/momo/debit';

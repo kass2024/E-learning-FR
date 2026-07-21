@@ -2323,6 +2323,28 @@ export const getPaymentConfig = async () => {
   }
 };
 
+export type PaymentReceiverSettings = {
+  momo_receiver_phone?: string | null;
+  momo_receiver_name?: string | null;
+  momo_whatsapp_phone?: string | null;
+  display_momo_phone?: string;
+  display_whatsapp_phone?: string;
+};
+
+export const getPaymentReceiverSettings = async () => {
+  const response = await api.get(`/site-settings/payment-receiver`);
+  return (response.data?.payment_receiver ?? response.data) as PaymentReceiverSettings;
+};
+
+export const updatePaymentReceiverSettings = async (data: {
+  momo_receiver_phone: string;
+  momo_receiver_name?: string;
+  momo_whatsapp_phone?: string;
+}) => {
+  const response = await api.put(`/site-settings/payment-receiver`, data);
+  return (response.data?.payment_receiver ?? response.data) as PaymentReceiverSettings;
+};
+
 export const requestMomoPayment = async (
   courseId: number,
   studentId: number,
