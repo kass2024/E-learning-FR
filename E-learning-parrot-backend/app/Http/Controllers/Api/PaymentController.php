@@ -390,6 +390,107 @@ class PaymentController extends Controller
         ], 200);
     }
 
+    private function mapPromoCodeRow(CoursePromoCode $promo): array
+    {
+        return [
+            'id' => $promo->id,
+            'code' => $promo->code,
+            'label' => $promo->label,
+            'max_uses' => (int) $promo->max_uses,
+            'uses_count' => (int) $promo->uses_count,
+            'is_active' => (bool) $promo->is_active,
+            'expires_at' => $promo->expires_at?->toIso8601String(),
+            'course_id' => $promo->course_id,
+            'course_title' => $promo->course?->title,
+            'created_by' => $promo->created_by,
+            'created_at' => $promo->created_at?->toIso8601String(),
+        ];
+    }
+
+    public function promoCodes(Request $request)
+    {
+        $tenantId = PlatformTenantScope::resolveTenantId($request);
+        $query = CoursePromoCode::query()
+            ->with(['course:id,title'])
+            ->orderByDesc('id');
+
+        if ($tenantId !== null) {
+            $courseIds = PlatformTenantScope::tenantCourseIds($tenantId);
+            $query->where(function ($q) use ($courseIds) {
+                $q->whereNull('course_id');
+                if ($courseIds) {
+                    $q->orWhereIn('course_id', $courseIds);
+                }
+            });
+        }
+
+        return response()->json(
+            $query->get()->map(fn (CoursePromoCode $p) => $this->mapPromoCodeRow($p))->values(),
+            200
+        );
+    }
+
+    public function storePromoCode(Request $request)
+    {
+        $data = $request->validate([
+            'code' => 'required|string|max:64|unique:course_promo_codes,code',
+            'label' => 'nullable|string|max:255',
+            'max_uses' => 'nullable|integer|min:1|max:100000',
+            'expires_at' => 'nullable|date',
+            'course_id' => 'nullable|integer|exists:courses,id',
+            'is_active' => 'nullable|boolean',
+        ]);
+
+        $promo = CoursePromoCode::create([
+            'code' => strtoupper(trim($data['code'])),
+            'label' => $data['label'] ?? null,
+            'max_uses' => $data['max_uses'] ?? 100,
+            'uses_count' => 0,
+            'is_active' => array_key_exists('is_active', $data) ? (bool) $data['is_active'] : true,
+            'expires_at' => $data['expires_at'] ?? null,
+            'course_id' => $data['course_id'] ?? null,
+            'created_by' => $request->user()?->email ?? $request->input('created_by'),
+        ]);
+
+        return response()->json([
+            'message' => 'Course promo code created',
+            'promo_code' => $this->mapPromoCodeRow($promo->load('course:id,title')),
+        ], 201);
+    }
+
+    public function updatePromoCode(Request $request, CoursePromoCode $coursePromoCode)
+    {
+        $data = $request->validate([
+            'label' => 'nullable|string|max:255',
+            'max_uses' => 'nullable|integer|min:1|max:100000',
+            'expires_at' => 'nullable|date',
+            'course_id' => 'nullable|integer|exists:courses,id',
+            'is_active' => 'nullable|boolean',
+        ]);
+
+        if (array_key_exists('label', $data)) {
+            $coursePromoCode->label = $data['label'];
+        }
+        if (array_key_exists('max_uses', $data)) {
+            $coursePromoCode->max_uses = $data['max_uses'];
+        }
+        if (array_key_exists('expires_at', $data)) {
+            $coursePromoCode->expires_at = $data['expires_at'];
+        }
+        if (array_key_exists('course_id', $data)) {
+            $coursePromoCode->course_id = $data['course_id'];
+        }
+        if (array_key_exists('is_active', $data)) {
+            $coursePromoCode->is_active = (bool) $data['is_active'];
+        }
+        $coursePromoCode->save();
+
+        return response()->json([
+            'message' => 'Course promo code updated',
+            'promo_code' => $this->mapPromoCodeRow($coursePromoCode->fresh(['course:id,title'])),
+        ]);
+    }
+
     /** Stripe checkout kept but disabled in favour of MoPay. */
     public function createCheckout(Request $request)
     {

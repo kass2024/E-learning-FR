@@ -348,6 +348,9 @@ Route::prefix('admin')->group(function () {
     Route::get('payments', [PaymentController::class, 'index']);
     Route::get('payments/config', [PaymentController::class, 'paymentConfig']);
     Route::get('payments/stripe-config', [PaymentController::class, 'stripeConfig']);
+    Route::get('course-promo-codes', [PaymentController::class, 'promoCodes']);
+    Route::post('course-promo-codes', [PaymentController::class, 'storePromoCode']);
+    Route::patch('course-promo-codes/{coursePromoCode}', [PaymentController::class, 'updatePromoCode']);
     Route::patch('payments/{payment}', [PaymentController::class, 'updateStatus']);
     Route::post('payments/create-checkout', [PaymentController::class, 'createCheckout']);
     Route::post('payments/confirm-checkout', [PaymentController::class, 'confirmCheckout']);

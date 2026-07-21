@@ -1866,6 +1866,51 @@ export const updateAdminPaymentStatus = async (id: number, status: string) => {
   return response.data;
 };
 
+export type CoursePromoCodeRow = {
+  id: number;
+  code: string;
+  label?: string | null;
+  max_uses: number;
+  uses_count: number;
+  is_active: boolean;
+  expires_at?: string | null;
+  course_id?: number | null;
+  course_title?: string | null;
+  created_by?: string | null;
+  created_at?: string | null;
+};
+
+export const getCoursePromoCodes = async () => {
+  const response = await api.get(`/course-promo-codes`, { timeout: 15000 });
+  return (Array.isArray(response.data) ? response.data : []) as CoursePromoCodeRow[];
+};
+
+export const createCoursePromoCode = async (data: {
+  code: string;
+  label?: string;
+  max_uses?: number;
+  expires_at?: string;
+  course_id?: number | null;
+  is_active?: boolean;
+}) => {
+  const response = await api.post(`/course-promo-codes`, data);
+  return response.data as { message: string; promo_code: CoursePromoCodeRow };
+};
+
+export const updateCoursePromoCode = async (
+  id: number,
+  data: {
+    label?: string | null;
+    max_uses?: number;
+    expires_at?: string | null;
+    course_id?: number | null;
+    is_active?: boolean;
+  }
+) => {
+  const response = await api.patch(`/course-promo-codes/${id}`, data);
+  return response.data as { message: string; promo_code: CoursePromoCodeRow };
+};
+
 // ------------------- E-LEARNING PROGRAMS -------------------
 
 export type LearningProgramPayload = {
