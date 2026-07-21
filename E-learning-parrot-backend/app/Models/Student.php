@@ -39,16 +39,28 @@ class Student extends Model
     {
         static::saving(function (Student $student) {
             // Keep legacy DB `name` column in sync (NOT NULL, no default).
-            $full = trim((string) ($student->attributes['first_name'] ?? $student->first_name ?? '') . ' ' . (string) ($student->attributes['last_name'] ?? $student->last_name ?? ''));
-            $student->attributes['name'] = $full !== ''
-                ? $full
-                : (string) ($student->attributes['email'] ?? $student->email ?? '');
+            $full = trim(
+                (string) ($student->getAttribute('first_name') ?? '') . ' ' .
+                (string) ($student->getAttribute('last_name') ?? '')
+            );
+            $student->setAttribute(
+                'name',
+                $full !== '' ? $full : (string) ($student->getAttribute('email') ?? '')
+            );
         });
+    }
+
+    public function setNameAttribute($value): void
+    {
+        $this->attributes['name'] = (string) $value;
     }
 
     public function getNameAttribute(): string
     {
-        $full = trim(($this->attributes['first_name'] ?? $this->first_name ?? '') . ' ' . ($this->attributes['last_name'] ?? $this->last_name ?? ''));
+        $full = trim(
+            (string) ($this->attributes['first_name'] ?? '') . ' ' .
+            (string) ($this->attributes['last_name'] ?? '')
+        );
 
         if ($full !== '') {
             return $full;
@@ -58,7 +70,7 @@ class Student extends Model
             return (string) $this->attributes['name'];
         }
 
-        return (string) ($this->attributes['email'] ?? $this->email ?? '');
+        return (string) ($this->attributes['email'] ?? '');
     }
 
     /**
