@@ -39,6 +39,58 @@ export const LANGUAGE_PROGRAMS = [
   },
 ] as const;
 
+/** Feature posts used on the home page */
+export const FEATURE_POSTS = [
+  {
+    overline: "An interactive community",
+    title: "Learn more together",
+    body: "Go beyond the textbook. Practise pronunciation, gain cultural insights, and exchange language tips with instructors and fellow learners in live online classes.",
+    image: HOME_UNIQUE_IMAGES.featEnroll,
+    accent: "green" as const,
+    mock: {
+      title: "Live feedback",
+      line: "Your instructor corrected your exercise.",
+      badge: "Well done!",
+    },
+  },
+  {
+    overline: "Courses created by experts",
+    title: "Learn with confidence",
+    body: "Make real improvements with solid foundations in speaking, listening, reading, and writing — prepared for school, work, and everyday life.",
+    image: HOME_UNIQUE_IMAGES.featDashboard,
+    accent: "yellow" as const,
+    mock: {
+      title: "Checkpoint completed!",
+      line: "You scored 100% on Chapter 1.",
+      badge: "+20",
+    },
+  },
+  {
+    overline: "Immersive speaking practice",
+    title: "Learn for real life",
+    body: "Get instant feedback for lasting confidence. Live speaking practice helps you beat speaking anxiety with personalized guidance from qualified instructors.",
+    image: HOME_UNIQUE_IMAGES.liveClass,
+    accent: "sky" as const,
+    mock: {
+      title: "Speaking practice",
+      line: "Original · You — pronunciation match",
+      badge: "Perfect!",
+    },
+  },
+  {
+    overline: "Self-led learning",
+    title: "Learn your way",
+    body: "Whatever your reason for learning a language, you're in control. Choose monthly, termly, or VIP one-on-one plans that fit your schedule.",
+    image: HOME_UNIQUE_IMAGES.featVideo,
+    accent: "green" as const,
+    mock: {
+      title: "Your study plan",
+      line: "English · French · Kinyarwanda",
+      badge: "Flexible",
+    },
+  },
+] as const;
+
 export const WHY_LEARN = [
   {
     title: "Learn with confidence",
