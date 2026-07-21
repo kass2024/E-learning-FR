@@ -301,7 +301,7 @@ class AdminReportsController extends Controller
                 'pendingPayments' => $pendingPayments,
                 'pendingPayoutRequests' => $pendingPayoutRequests,
                 'pendingPayoutAmount' => round($pendingPayoutAmount, 2),
-                'paymentProvider' => 'Stripe',
+                'paymentProvider' => 'Mobile Money',
             ],
             'enrollmentsByMonth' => $enrollmentsByMonth,
             'revenueByMonth' => $revenueByMonth,

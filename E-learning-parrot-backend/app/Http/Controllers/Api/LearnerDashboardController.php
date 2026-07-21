@@ -415,7 +415,7 @@ class LearnerDashboardController extends Controller
 
                 'publishable_key' => $stripePublic ?: null,
 
-                'provider' => 'Stripe',
+                'provider' => 'Mobile Money',
 
             ],
 

@@ -345,11 +345,17 @@ Route::prefix('admin')->group(function () {
 
     /*** ---------------- PAYMENTS ---------------- ***/
     Route::get('payments', [PaymentController::class, 'index']);
+    Route::get('payments/config', [PaymentController::class, 'paymentConfig']);
     Route::get('payments/stripe-config', [PaymentController::class, 'stripeConfig']);
     Route::patch('payments/{payment}', [PaymentController::class, 'updateStatus']);
     Route::post('payments/create-checkout', [PaymentController::class, 'createCheckout']);
     Route::post('payments/confirm-checkout', [PaymentController::class, 'confirmCheckout']);
     Route::post('payments/create-intent', [PaymentController::class, 'createIntent']);
+    Route::post('payments/momo/request', [PaymentController::class, 'requestMomo']);
+    Route::post('payments/promo/apply', [PaymentController::class, 'applyPromo']);
+    Route::post('payments/proof/submit', [PaymentController::class, 'submitProof']);
+    Route::post('payments/mopay/register-callbacks', [PaymentController::class, 'registerMopayCallbacks']);
+    Route::match(['get', 'post'], 'payments/mopay/webhook', [PaymentController::class, 'mopayWebhook']);
 
     /*** ---------------- ZOOM ---------------- ***/
     Route::get('zoom/meetings', [ZoomController::class, 'listMeetings']);

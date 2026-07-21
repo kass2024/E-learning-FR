@@ -67,6 +67,21 @@ return [
         'key'    => env('STRIPE_PUBLIC_KEY'),
     ],
 
+    'mopay' => [
+        'account_id' => env('MOPAY_ACCOUNT_ID'),
+        'auth_key' => env('MOPAY_AUTH_KEY'),
+        'bearer_token' => env('MOPAY_BEARER_TOKEN'),
+        'server_base_url' => rtrim(env('MOPAY_SERVER_BASE_URL', 'http://41.186.14.66:443/'), '/'),
+        'callback_signing_key' => env('MOPAY_CALLBACK_SIGNING_KEY'),
+        'callback_url' => env('MOPAY_CALLBACK_URL'),
+        'default_country_code' => env('MOPAY_DEFAULT_COUNTRY_CODE', 'rw'),
+        'default_mno' => env('MOPAY_DEFAULT_MNO', 'mtn'),
+        'default_currency' => env('MOPAY_DEFAULT_CURRENCY', 'RWF'),
+        'receiver_account_no' => env('MOPAY_RECEIVER_ACCOUNT_NO', '0788821579'),
+        'payment_title' => env('MOPAY_PAYMENT_TITLE', 'F&R Rwanda course payment'),
+        'payment_details' => env('MOPAY_PAYMENT_DETAILS', 'Course enrollment payment'),
+    ],
+
     'pcloud' => [
         'access_token' => env('PCLOUD_ACCESS_TOKEN'),
         'root_folder_id' => env('PCLOUD_ROOT_FOLDER_ID', 31887143130),

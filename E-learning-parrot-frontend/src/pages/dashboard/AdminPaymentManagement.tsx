@@ -24,12 +24,13 @@ import { useToast } from "@/components/ui/use-toast";
 import { useDashboardQuery } from "@/hooks/useDashboardQuery";
 import { invalidateDashboardCache } from "@/lib/dashboardCache";
 import { filterBySmartSearch } from "@/lib/smartSearch";
-const STATUS_OPTIONS = ["pending", "processing", "paid", "succeeded", "completed", "failed", "cancelled", "refunded"];
+const STATUS_OPTIONS = ["pending", "processing", "proof_pending", "paid", "succeeded", "completed", "failed", "cancelled", "refunded"];
 
 function statusBadge(status: string) {
   const lower = status.toLowerCase();
   if (["paid", "succeeded", "completed"].includes(lower)) return "default";
   if (["failed", "cancelled", "refunded"].includes(lower)) return "destructive";
+  if (lower === "proof_pending") return "outline";
   return "secondary";
 }
 
@@ -98,7 +99,7 @@ const AdminPaymentManagement = () => {
     <div className="space-y-6">
       <AdminPageHeader
         title="Payment Management"
-        description="Monitor Stripe checkout sessions and update payment statuses."
+        description="Mobile Money, promo codes, and payment-proof enrollments. Mark proof_pending rows as paid after verification."
       >
         <Button onClick={() => void load()} disabled={refreshing} className="bg-[#FCC400] hover:bg-[#E79A4D] text-slate-900">
           {refreshing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}          Refresh
@@ -106,8 +107,8 @@ const AdminPaymentManagement = () => {
       </AdminPageHeader>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <AdminStatCard label="Payment provider" value={summary.provider} hint="Students pay via Stripe" />
-        <AdminStatCard label="Total revenue" value={`$${summary.totalRevenue.toFixed(2)}`} />
+        <AdminStatCard label="Payment provider" value={summary.provider || "Mobile Money"} hint="MoPay / proof / promo" />
+        <AdminStatCard label="Total revenue" value={`${summary.totalRevenue.toLocaleString()} RWF`} />
         <AdminStatCard label="Pending payments" value={summary.pendingPayments} />
       </div>
 
@@ -131,7 +132,7 @@ const AdminPaymentManagement = () => {
             <TableSkeleton rows={8} cols={7} />
           ) : payments.length === 0 ? (
             <p className="text-center text-muted-foreground py-12">
-              No payment records yet. Payments appear when learners start Stripe checkout.
+              No payment records yet. They appear when learners pay via Mobile Money, promo, or proof upload.
             </p>
           ) : filteredPayments.length === 0 ? (
             <p className="text-center text-muted-foreground py-12">No payments match your search.</p>
@@ -160,7 +161,20 @@ const AdminPaymentManagement = () => {
                       </TableCell>
                       <TableCell>{payment.course_title || `#${payment.course_id}`}</TableCell>
                       <TableCell>
-                        {payment.currency} ${payment.amount.toFixed(2)}
+                        {payment.currency} {Number(payment.amount).toLocaleString()}
+                        {payment.proof_url ? (
+                          <a
+                            href={payment.proof_url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="block text-xs text-primary underline mt-1"
+                          >
+                            View proof
+                          </a>
+                        ) : null}
+                        {payment.promo_code ? (
+                          <span className="block text-xs text-muted-foreground mt-1">Promo: {payment.promo_code}</span>
+                        ) : null}
                       </TableCell>
                       <TableCell className="capitalize">{payment.provider}</TableCell>
                       <TableCell>

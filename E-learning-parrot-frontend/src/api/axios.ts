@@ -1846,6 +1846,12 @@ export type AdminPaymentRow = {
   currency: string;
   provider: string;
   status: string;
+  msisdn?: string | null;
+  external_reference?: string | null;
+  promo_code?: string | null;
+  proof_path?: string | null;
+  proof_url?: string | null;
+  proof_note?: string | null;
   paid_at?: string | null;
   created_at?: string | null;
 };
@@ -2229,6 +2235,93 @@ export const createPaymentIntent = async (courseId: number, studentId: number) =
     student_id: studentId,
   });
   return response.data as { client_secret: string };
+};
+
+export type PaymentConfig = {
+  provider: string;
+  configured: boolean;
+  currency?: string;
+  default_mno?: string;
+  guidelines?: {
+    packs?: Array<{
+      name: string;
+      online?: string;
+      in_person?: string;
+      from?: string;
+      duration?: string;
+      featured?: boolean;
+    }>;
+    methods?: Array<{
+      type: string;
+      label: string;
+      account_name?: string;
+      account_number?: string;
+      phone?: string;
+      ussd?: string;
+    }>;
+    note?: string;
+  };
+};
+
+export const getPaymentConfig = async () => {
+  try {
+    const response = await api.get(`/payments/config`);
+    return response.data as PaymentConfig;
+  } catch {
+    const response = await api.get(`/payments/stripe-config`);
+    return {
+      provider: response.data?.provider ?? "mopay",
+      configured: Boolean(response.data?.configured),
+      currency: response.data?.currency ?? "RWF",
+      guidelines: response.data?.guidelines,
+    } as PaymentConfig;
+  }
+};
+
+export const requestMomoPayment = async (
+  courseId: number,
+  studentId: number,
+  phone: string,
+  mno: "mtn" | "airtel" = "mtn"
+) => {
+  const response = await api.post(`/payments/momo/request`, {
+    course_id: courseId,
+    student_id: studentId,
+    phone,
+    mno,
+  });
+  return response.data as {
+    ok: boolean;
+    message: string;
+    transaction_id?: string;
+    payment_id?: number;
+  };
+};
+
+export const applyCoursePromoCode = async (courseId: number, studentId: number, code: string) => {
+  const response = await api.post(`/payments/promo/apply`, {
+    course_id: courseId,
+    student_id: studentId,
+    code,
+  });
+  return response.data as { message: string; enrollment_status?: string };
+};
+
+export const submitPaymentProof = async (
+  courseId: number,
+  studentId: number,
+  proof: File,
+  note?: string
+) => {
+  const form = new FormData();
+  form.append("course_id", String(courseId));
+  form.append("student_id", String(studentId));
+  form.append("proof", proof);
+  if (note) form.append("note", note);
+  const response = await api.post(`/payments/proof/submit`, form, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+  return response.data as { message: string };
 };
 
 export type StripeConfig = {

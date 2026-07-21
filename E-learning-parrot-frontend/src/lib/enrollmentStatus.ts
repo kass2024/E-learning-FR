@@ -20,7 +20,8 @@ export function isPendingEnrollmentApproval(status?: string | null): boolean {
 }
 
 export function canPayForEnrollment(status?: string | null): boolean {
-  return normalizeEnrollmentStatus(status) === "approved";
+  const s = normalizeEnrollmentStatus(status);
+  return s === "enrolled" || s === "applied" || s === "waiting approval" || s === "approved";
 }
 
 /** Full course resource access (materials, live classes, quizzes). */

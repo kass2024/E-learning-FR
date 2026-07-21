@@ -34,7 +34,8 @@ class EnrollmentStatusHelper
 
     public static function canPay(?string $status): bool
     {
-        return self::normalize($status) === 'approved';
+        // Allow MoMo / promo / payment-proof while application is pending or approved.
+        return in_array(self::normalize($status), ['enrolled', 'applied', 'waiting approval', 'approved'], true);
     }
 
     public static function isRejected(?string $status): bool
