@@ -25,8 +25,6 @@ class Student extends Model
         'document_url',
     ];
 
-    protected $appends = [];
-
     protected $hidden = [
         'password',
     ];
@@ -39,38 +37,12 @@ class Student extends Model
     {
         static::saving(function (Student $student) {
             // Keep legacy DB `name` column in sync (NOT NULL, no default).
-            $full = trim(
-                (string) ($student->getAttribute('first_name') ?? '') . ' ' .
-                (string) ($student->getAttribute('last_name') ?? '')
-            );
-            $student->setAttribute(
-                'name',
-                $full !== '' ? $full : (string) ($student->getAttribute('email') ?? '')
-            );
+            $first = (string) ($student->getAttributes()['first_name'] ?? '');
+            $last = (string) ($student->getAttributes()['last_name'] ?? '');
+            $email = (string) ($student->getAttributes()['email'] ?? '');
+            $full = trim($first . ' ' . $last);
+            $student->name = $full !== '' ? $full : $email;
         });
-    }
-
-    public function setNameAttribute($value): void
-    {
-        $this->attributes['name'] = (string) $value;
-    }
-
-    public function getNameAttribute(): string
-    {
-        $full = trim(
-            (string) ($this->attributes['first_name'] ?? '') . ' ' .
-            (string) ($this->attributes['last_name'] ?? '')
-        );
-
-        if ($full !== '') {
-            return $full;
-        }
-
-        if (!empty($this->attributes['name'])) {
-            return (string) $this->attributes['name'];
-        }
-
-        return (string) ($this->attributes['email'] ?? '');
     }
 
     /**

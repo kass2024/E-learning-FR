@@ -96,7 +96,7 @@ class AuthController extends Controller
             $student->primary_goal = $data['primary_goal'] ?? '';
             // Legacy NOT NULL `name` column (also synced in Student::booted).
             $fullName = trim($data['first_name'] . ' ' . ($data['last_name'] ?? ''));
-            $student->setAttribute('name', $fullName !== '' ? $fullName : (string) $data['email']);
+            $student->name = $fullName !== '' ? $fullName : (string) $data['email'];
             $plainPassword = !empty($data['password'])
                 ? (string) $data['password']
                 : Str::password(12, symbols: true);

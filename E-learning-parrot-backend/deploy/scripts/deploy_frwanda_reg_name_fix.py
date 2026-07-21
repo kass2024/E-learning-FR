@@ -46,29 +46,34 @@ docker cp /opt/e-learning-frwanda/E-learning-parrot-backend/app/Models/Student.p
 docker cp /opt/e-learning-frwanda/E-learning-parrot-backend/app/Http/Controllers/Api/AuthController.php "$BE_CT:/var/www/html/app/Http/Controllers/Api/AuthController.php"
 docker exec "$BE_CT" php -l /var/www/html/app/Models/Student.php
 docker exec "$BE_CT" php -l /var/www/html/app/Http/Controllers/Api/AuthController.php
-docker exec "$BE_CT" grep -n "booted\|attributes\['name'\]" /var/www/html/app/Models/Student.php | head -10
-docker exec "$BE_CT" grep -n "attributes\['name'\]" /var/www/html/app/Http/Controllers/Api/AuthController.php | head -5
-# quick register dry-run via tinker-like php
+docker exec "$BE_CT" grep -n "booted\|student->name\|forceFill\|setAttribute\|attributes\['name'\]" /var/www/html/app/Models/Student.php /var/www/html/app/Http/Controllers/Api/AuthController.php | head -20
+docker exec "$BE_CT" php -r 'if (function_exists("opcache_reset")) { opcache_reset(); echo "opcache_reset ok\n"; } else { echo "no opcache\n"; }'
 docker exec "$BE_CT" php -r '
 require "vendor/autoload.php";
 $app = require "bootstrap/app.php";
 $app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
-$s = new App\Models\Student();
-$s->first_name = "Test";
-$s->last_name = "Regfix";
-$s->email = "regfix+".time()."@example.com";
-$s->status = "Pending";
-$s->phone = "";
-$s->country = "";
-$s->primary_goal = "";
-$s->password = "TempPass123!";
-$s->save();
-echo "saved id=".$s->id." name=".$s->getAttributes()["name"]."\n";
-$s->delete();
-echo "ok\n";
+try {
+  $s = new App\Models\Student();
+  $s->first_name = "Test";
+  $s->last_name = "Regfix";
+  $s->email = "regfix+".time()."@example.com";
+  $s->status = "Pending";
+  $s->phone = "";
+  $s->country = "";
+  $s->primary_goal = "";
+  $s->password = "TempPass123!";
+  $s->save();
+  $name = $s->getAttributes()["name"] ?? "MISSING";
+  echo "saved id=".$s->id." name=".$name."\n";
+  $s->delete();
+  echo "ok\n";
+} catch (Throwable $ex) {
+  echo "ERR: ".$ex->getMessage()."\n".$ex->getFile().":".$ex->getLine()."\n";
+  exit(1);
+}
 '
 """
-    return d.run(client, cmd, timeout=120)
+    return d.run(client, cmd, timeout=180)
 
 
 if __name__ == "__main__":

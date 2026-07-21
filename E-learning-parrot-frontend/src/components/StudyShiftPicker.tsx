@@ -141,7 +141,7 @@ export function StudyShiftPicker({
   if (groups.length === 0) {
     return (
       <p className="text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-md px-2 py-1.5">
-        Weekly study times are not available for this course yet. Please try again or contact support.
+        No study shifts are set for this course yet. An admin must create them under Study Shifts first.
       </p>
     );
   }
