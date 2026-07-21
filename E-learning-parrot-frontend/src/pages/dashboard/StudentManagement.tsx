@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
-import { Loader2, GraduationCap, Users, Pencil, Trash2, ArrowRightCircle, CheckCircle2, XCircle, MoreHorizontal } from "lucide-react";
+import { Loader2, GraduationCap, Users, Pencil, Trash2, ArrowRightCircle, CheckCircle2, XCircle, MoreHorizontal, Mail } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -45,6 +45,7 @@ import { formatEnrollmentShiftsSummary } from "@/lib/studyShiftUtils";
 import { EnrollmentShiftEditor } from "@/components/study-shifts/EnrollmentShiftEditor";
 import { StudyShiftPicker } from "@/components/StudyShiftPicker";
 import { EnrollmentManageActions } from "@/components/enrollments/EnrollmentManageActions";
+import { SendPaymentNotificationDialog } from "@/components/enrollments/SendPaymentNotificationDialog";
 import { enrollmentPaymentStatusText } from "@/lib/enrollmentStatus";
 import { getInstructorEmail } from "@/lib/dashboardUser";
 
@@ -112,6 +113,7 @@ const StudentManagement = () => {
   const [pageSize, setPageSize] = useState(10);
 
   const [enrollDialogOpen, setEnrollDialogOpen] = useState(false);
+  const [payNotifyStudent, setPayNotifyStudent] = useState<StudentRow | null>(null);
   const [selectedStudent, setSelectedStudent] = useState<StudentRow | null>(null);
   const [courses, setCourses] = useState<CourseRow[]>([]);
   const [coursesLoading, setCoursesLoading] = useState(false);
@@ -1171,6 +1173,16 @@ const StudentManagement = () => {
                               variant="outline"
                               size="sm"
                               className="h-8 px-2.5"
+                              onClick={() => setPayNotifyStudent(student)}
+                              title="Email payment details and Pay & Enroll link"
+                            >
+                              <Mail className="w-4 h-4 mr-1" />
+                              Pay notify
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-8 px-2.5"
                               onClick={() => handleViewAsStudent(student)}
                             >
                               <ArrowRightCircle className="w-4 h-4 mr-1" />
@@ -1515,6 +1527,13 @@ const StudentManagement = () => {
           onSave={handleSaveEnrollmentShifts}
         />
       )}
+
+      <SendPaymentNotificationDialog
+        open={!!payNotifyStudent}
+        onOpenChange={(open) => !open && setPayNotifyStudent(null)}
+        student={payNotifyStudent}
+        staffEmail={staffEmail}
+      />
     </div>
   );
 };

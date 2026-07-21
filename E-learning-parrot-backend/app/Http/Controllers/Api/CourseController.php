@@ -792,7 +792,7 @@ class CourseController extends Controller
     }
 
     /**
-     * Create a Stripe checkout link and optionally email it to the learner.
+     * Email the learner payment details + Pay & Enroll link (MoMo / bank / proof).
      */
     public function sendPaymentLink(Request $request, Course $course)
     {
@@ -819,41 +819,57 @@ class CourseController extends Controller
 
         if (!EnrollmentStatusHelper::canPay($enrollment->status)) {
             return response()->json([
-                'message' => 'Payment links can only be sent for approved enrollments that are not yet paid.',
+                'message' => 'Payment notifications can only be sent for unpaid enrollments (pending or approved).',
             ], 422);
         }
 
-        $stripe = app(\App\Services\StripePaymentService::class);
-        $result = $stripe->createCheckoutSession($course, (int) $data['student_id']);
-
-        if (empty($result['ok'])) {
+        $student = Student::find($data['student_id']);
+        if (!$student?->email) {
             return response()->json([
-                'message' => $result['message'] ?? 'Unable to create payment link.',
-            ], $result['status'] ?? 500);
+                'message' => 'This learner has no email address on file.',
+            ], 422);
         }
 
-        $paymentUrl = $result['url'];
-        $student = Student::find($data['student_id']);
-        $sendEmail = $data['send_email'] ?? true;
+        $amount = (float) ($course->price ?? 0);
+        $paymentUrl = rtrim(\App\Support\FrontendUrl::base(), '/')
+            . '/dashboard/learner/payment?course_id=' . (int) $course->id;
 
-        if ($sendEmail && $student?->email) {
+        $receiver = \App\Models\SiteSetting::current()->paymentReceiverPayload();
+        $paymentDetails = [
+            'currency' => 'RWF',
+            'momo_name' => $receiver['momo_receiver_name'] ?? 'Kalisa Valens',
+            'momo_phone' => $receiver['display_momo_phone'] ?? '0788 821 579',
+            'momo_ussd' => '*182#',
+            'bank_name' => 'Equity Bank',
+            'bank_account_name' => $receiver['momo_receiver_name'] ?? 'Kalisa Valens',
+            'bank_account_number' => '4015101074908',
+            'whatsapp' => $receiver['display_whatsapp_phone'] ?? '+250 788 821 579',
+            'note' => 'Envoyez la preuve de paiement pour confirmation.',
+        ];
+
+        $sendEmail = $data['send_email'] ?? true;
+        if ($sendEmail) {
             $this->mail->sendTo(
                 $student->email,
                 new CoursePaymentLinkMail(
                     $student,
                     $course,
                     $paymentUrl,
-                    (float) ($course->price ?? 0)
+                    $amount,
+                    $paymentDetails
                 ),
                 ['event' => 'payment_link_sent', 'student_id' => $data['student_id'], 'course_id' => $course->id]
             );
         }
 
         return response()->json([
-            'message' => $sendEmail && $student?->email
-                ? 'Payment link sent to the learner by email.'
-                : 'Payment link created.',
+            'message' => $sendEmail
+                ? 'Payment notification sent to the learner by email.'
+                : 'Payment details prepared.',
             'payment_url' => $paymentUrl,
+            'amount' => $amount,
+            'currency' => 'RWF',
+            'payment_details' => $paymentDetails,
         ]);
     }
 

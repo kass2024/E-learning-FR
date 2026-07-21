@@ -2157,7 +2157,12 @@ export const sendCoursePaymentLink = async (
     send_email: sendEmail,
     ...(email ? { email } : {}),
   });
-  return response.data as { message: string; payment_url?: string };
+  return response.data as {
+    message: string;
+    payment_url?: string;
+    amount?: number;
+    currency?: string;
+  };
 };
 
 export type StudentCourseEnrollment = {
