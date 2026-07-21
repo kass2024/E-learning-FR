@@ -89,23 +89,19 @@ class StudyShiftProvisioningService
      */
     public function shiftsForCourseRegistration(Course $course, ?int $institutionId = null): Collection
     {
-        $programCourseIds = $this->programCourseIds($course);
-
         $query = StudyShift::query()
             ->with(['courses:id,title', 'course:id,title'])
             ->withCount('enrollmentLinks')
             ->where('is_active', true)
-            ->where(function ($q) use ($course, $programCourseIds) {
+            ->where(function ($q) use ($course) {
+                // True globals: course_id null and no pivot rows
                 $q->where(function ($global) {
                     $global->whereNull('course_id')->whereDoesntHave('courses');
                 })
+                    // Linked to this course via pivot
                     ->orWhereHas('courses', fn ($sub) => $sub->where('courses.id', $course->id))
+                    // Legacy single-course FK
                     ->orWhere('course_id', $course->id);
-
-                if ($programCourseIds !== []) {
-                    $q->orWhereIn('course_id', $programCourseIds)
-                        ->orWhereHas('courses', fn ($sub) => $sub->whereIn('courses.id', $programCourseIds));
-                }
             });
 
         $this->applyInstitutionScope($query, $course, $institutionId);
