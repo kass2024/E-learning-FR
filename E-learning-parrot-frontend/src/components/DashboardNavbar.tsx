@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { NavLink } from "@/components/NavLink";
 import { Button } from "@/components/ui/button";
 import { LogOut, Menu, X, Settings, UserRound } from "lucide-react";
@@ -23,6 +23,8 @@ const DashboardNavbar = ({ role, userName, userEmail, onLogout, onMenuToggle, si
   useInstitutionBrandingRevision();
   const [avatarUrl, setAvatarUrl] = useState(() => localStorage.getItem("parrot_user_avatar") || "");
   const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     const sync = () => setAvatarUrl(localStorage.getItem("parrot_user_avatar") || "");
@@ -33,6 +35,46 @@ const DashboardNavbar = ({ role, userName, userEmail, onLogout, onMenuToggle, si
       window.removeEventListener("parrot-avatar-updated", sync);
     };
   }, []);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onPointerDown = (event: MouseEvent | TouchEvent) => {
+      const target = event.target as Node | null;
+      if (menuRef.current && target && !menuRef.current.contains(target)) {
+        setMenuOpen(false);
+      }
+    };
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setMenuOpen(false);
+    };
+    document.addEventListener("mousedown", onPointerDown);
+    document.addEventListener("touchstart", onPointerDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onPointerDown);
+      document.removeEventListener("touchstart", onPointerDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [menuOpen]);
+
+  useEffect(() => {
+    return () => {
+      if (closeTimer.current) clearTimeout(closeTimer.current);
+    };
+  }, []);
+
+  const openMenu = () => {
+    if (closeTimer.current) {
+      clearTimeout(closeTimer.current);
+      closeTimer.current = null;
+    }
+    setMenuOpen(true);
+  };
+
+  const scheduleClose = () => {
+    if (closeTimer.current) clearTimeout(closeTimer.current);
+    closeTimer.current = setTimeout(() => setMenuOpen(false), 180);
+  };
 
   const roleLabelMap: Record<DashboardRole, string> = {
     learner: "Learner",
@@ -85,77 +127,86 @@ const DashboardNavbar = ({ role, userName, userEmail, onLogout, onMenuToggle, si
           <span className="hidden xs:inline sm:inline truncate max-w-[12rem] sm:max-w-none">{brandTitle}</span>
         </NavLink>
 
-        <div className="flex items-center gap-2 sm:gap-4">
+        <div className="flex items-center gap-2 sm:gap-3">
           {role === "learner" && <LearnerNotificationBell />}
 
-          <div className="hidden md:flex flex-col items-end">
-            <span className="text-sm font-medium">{displayName}</span>
-            <span className="text-xs text-muted-foreground">{roleLabel}</span>
-          </div>
-
-          <div className="md:hidden text-right">
-            <span className="text-xs font-medium block">{displayName}</span>
-            <span className="text-xs text-muted-foreground">{roleLabel}</span>
-          </div>
-
           <div
+            ref={menuRef}
             className="relative"
-            onMouseEnter={() => setMenuOpen(true)}
-            onMouseLeave={() => setMenuOpen(false)}
+            onMouseEnter={openMenu}
+            onMouseLeave={scheduleClose}
           >
             <button
               type="button"
-              onClick={() => setMenuOpen((o) => !o)}
-              className="h-9 w-9 sm:h-10 sm:w-10 rounded-full overflow-hidden border-2 border-primary/20 bg-primary/10 flex items-center justify-center ring-offset-2 focus-visible:ring-2 focus-visible:ring-primary"
+              onClick={() => setMenuOpen((open) => !open)}
+              className="flex items-center gap-2 rounded-full py-1 pl-1 pr-1 sm:pr-2 hover:bg-muted/60 transition-colors"
               aria-label="Open profile menu"
               aria-expanded={menuOpen}
+              aria-haspopup="menu"
             >
-              {avatarUrl ? (
-                <img src={avatarUrl} alt="" className="h-full w-full object-cover" />
-              ) : (
-                <span className="text-xs sm:text-sm font-bold text-primary">{initials}</span>
-              )}
+              <div className="hidden md:flex flex-col items-end leading-tight mr-1">
+                <span className="text-sm font-medium">{displayName}</span>
+                <span className="text-xs text-muted-foreground">{roleLabel}</span>
+              </div>
+              <div className="md:hidden text-right mr-1">
+                <span className="text-xs font-medium block">{displayName}</span>
+                <span className="text-xs text-muted-foreground">{roleLabel}</span>
+              </div>
+              <span className="h-9 w-9 sm:h-10 sm:w-10 rounded-full overflow-hidden border-2 border-primary/20 bg-primary/10 flex items-center justify-center shrink-0">
+                {avatarUrl ? (
+                  <img src={avatarUrl} alt="" className="h-full w-full object-cover" />
+                ) : (
+                  <span className="text-xs sm:text-sm font-bold text-primary">{initials}</span>
+                )}
+              </span>
             </button>
 
+            {/* pt-2 keeps a hover bridge so the cursor can reach menu items */}
             <div
+              role="menu"
               className={cn(
-                "absolute right-0 mt-2 w-56 rounded-xl shadow-lg bg-background border border-border py-1 z-50 transition-all duration-150",
-                menuOpen ? "opacity-100 visible translate-y-0" : "opacity-0 invisible -translate-y-1 pointer-events-none",
+                "absolute right-0 top-full z-[60] w-56 pt-2 transition-opacity duration-100",
+                menuOpen ? "opacity-100 visible pointer-events-auto" : "opacity-0 invisible pointer-events-none",
               )}
             >
-              <div className="px-4 py-2 border-b border-border">
-                <p className="text-sm font-medium truncate">{displayName}</p>
-                <p className="text-xs text-muted-foreground truncate">{userEmail || roleLabel}</p>
-              </div>
-              <NavLink
-                to="/dashboard/profile"
-                onClick={() => setMenuOpen(false)}
-                className="w-full text-left px-4 py-2.5 text-sm text-muted-foreground hover:bg-muted hover:text-foreground flex items-center gap-2 no-underline"
-              >
-                <UserRound className="h-4 w-4" />
-                <span>My profile</span>
-              </NavLink>
-              {showPlatformSettings && (
+              <div className="rounded-xl border border-border bg-background py-1 shadow-lg">
+                <div className="px-4 py-2 border-b border-border">
+                  <p className="text-sm font-medium truncate">{displayName}</p>
+                  <p className="text-xs text-muted-foreground truncate">{userEmail || roleLabel}</p>
+                </div>
                 <NavLink
-                  to="/dashboard/settings"
+                  to="/dashboard/profile"
+                  role="menuitem"
                   onClick={() => setMenuOpen(false)}
                   className="w-full text-left px-4 py-2.5 text-sm text-muted-foreground hover:bg-muted hover:text-foreground flex items-center gap-2 no-underline"
                 >
-                  <Settings className="h-4 w-4" />
-                  <span>Platform settings</span>
+                  <UserRound className="h-4 w-4" />
+                  <span>My profile</span>
                 </NavLink>
-              )}
-              <button
-                type="button"
-                onClick={() => {
-                  setMenuOpen(false);
-                  onLogout?.();
-                }}
-                className="w-full text-left px-4 py-2.5 text-sm text-muted-foreground hover:bg-muted hover:text-foreground flex items-center gap-2"
-              >
-                <LogOut className="h-4 w-4" />
-                <span>Log out</span>
-              </button>
+                {showPlatformSettings && (
+                  <NavLink
+                    to="/dashboard/settings"
+                    role="menuitem"
+                    onClick={() => setMenuOpen(false)}
+                    className="w-full text-left px-4 py-2.5 text-sm text-muted-foreground hover:bg-muted hover:text-foreground flex items-center gap-2 no-underline"
+                  >
+                    <Settings className="h-4 w-4" />
+                    <span>Platform settings</span>
+                  </NavLink>
+                )}
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    onLogout?.();
+                  }}
+                  className="w-full text-left px-4 py-2.5 text-sm text-muted-foreground hover:bg-muted hover:text-foreground flex items-center gap-2"
+                >
+                  <LogOut className="h-4 w-4" />
+                  <span>Log out</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>
