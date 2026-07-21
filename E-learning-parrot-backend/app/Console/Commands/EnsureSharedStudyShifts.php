@@ -12,14 +12,14 @@ class EnsureSharedStudyShifts extends Command
     protected $signature = 'study-shifts:ensure-shared
                             {--institution= : Platform institution id (omit for hub courses)}';
 
-    protected $description = 'Attach shared Monday evening study shifts (Groups 1–5) to all courses in a tenant';
+    protected $description = 'Ensure official F&R Day/Evening/Weekend flyer study shifts exist for the tenant';
 
     public function handle(StudyShiftProvisioningService $provisioning): int
     {
         $raw = $this->option('institution');
         $institutionId = ($raw === null || $raw === '') ? null : (int) $raw;
 
-        $shifts = $provisioning->ensureSharedMondayEveningShiftsForTenant($institutionId);
+        $shifts = $provisioning->ensureFrwandaFlyerShiftsForTenant($institutionId);
 
         $courseQuery = Course::query();
         if ($institutionId === null) {
@@ -34,13 +34,13 @@ class EnsureSharedStudyShifts extends Command
         }
 
         $this->info(sprintf(
-            'Ensured %d shared shifts attached to %d courses (institution=%s).',
+            'Ensured %d F&R flyer shifts attached across %d courses (institution=%s).',
             $shifts->count(),
             $courseCount,
             $institutionId === null ? 'hub' : (string) $institutionId
         ));
 
-        foreach ($shifts as $shift) {
+        foreach ($shifts->take(20) as $shift) {
             $this->line(sprintf(
                 '  #%d %s · day %d %s–%s · courses=%d',
                 $shift->id,
@@ -50,6 +50,10 @@ class EnsureSharedStudyShifts extends Command
                 substr((string) $shift->end_time, 0, 5),
                 $shift->courses()->count()
             ));
+        }
+
+        if ($shifts->count() > 20) {
+            $this->line('  …');
         }
 
         return self::SUCCESS;
