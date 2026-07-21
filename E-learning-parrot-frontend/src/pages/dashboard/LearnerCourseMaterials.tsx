@@ -86,11 +86,11 @@ function MaterialsLockedNotice({ pending }: { pending?: boolean }) {
     <div className="rounded-lg border border-slate-200 bg-slate-50 px-6 py-10 text-center">
       <Lock className="h-10 w-10 text-slate-400 mx-auto mb-3" />
       <p className="font-medium text-slate-900 mb-1">
-        {pending ? "Learning materials unlock after approval" : "Materials not available"}
+        {pending ? "Learning materials unlock after payment or approval" : "Materials not available"}
       </p>
       <p className="text-sm text-muted-foreground max-w-md mx-auto">
         {pending
-          ? "You can read the full course guide below while your application is reviewed. Videos, files, and live classes will appear here once an administrator or instructor approves your enrollment."
+          ? "You can read the course guide below. Pay with Mobile Money or a promo code to unlock materials automatically, or upload payment proof for admin confirmation."
           : "You do not have access to learning materials for this course yet."}
       </p>
     </div>
@@ -683,17 +683,45 @@ const LearnerCourseMaterials = () => {
       </nav>
 
       {pendingApproval && (
-        <div className="rounded-lg border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900">
-          Your application is <strong>pending approval</strong>. You can read the full course guide below. Learning
-          materials unlock once an administrator or instructor approves your enrollment.
+        <div className="rounded-lg border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <p>
+            Your application is still <strong>pending</strong>. You can pay now — Mobile Money or promo code unlocks
+            access automatically; payment proof needs admin confirmation.
+          </p>
+          <Button
+            size="sm"
+            className="shrink-0 bg-emerald-600 hover:bg-emerald-500"
+            onClick={() => {
+              if (selectedCourseId) {
+                localStorage.setItem("parrot_selected_course_id", String(selectedCourseId));
+              }
+              navigate("/dashboard/learner/payment");
+            }}
+          >
+            Pay now
+          </Button>
         </div>
       )}
 
       {courseOverview && !pendingApproval && courseOverview.payment_paid === false && (courseOverview.price ?? 0) > 0 && (
-        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-          You have full access to this course. Payment of{" "}
-          <strong>${Number(courseOverview.price).toFixed(2)}</strong> is still outstanding — your instructor or
-          administrator will send a payment link when ready.
+        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <p>
+            You have access to this course. Payment of{" "}
+            <strong>${Number(courseOverview.price).toFixed(2)}</strong> is still outstanding.
+          </p>
+          <Button
+            size="sm"
+            variant="outline"
+            className="shrink-0"
+            onClick={() => {
+              if (selectedCourseId) {
+                localStorage.setItem("parrot_selected_course_id", String(selectedCourseId));
+              }
+              navigate("/dashboard/learner/payment");
+            }}
+          >
+            Pay now
+          </Button>
         </div>
       )}
 

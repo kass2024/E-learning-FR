@@ -59,7 +59,7 @@ export function enrollmentBadgeLabel(status?: string | null): string {
   if (s === "completed") return "Completed";
   if (s === "approved") return "Active — payment due";
   if (s === "rejected") return "Rejected";
-  if (isPendingEnrollmentApproval(s)) return "Waiting approval";
+  if (isPendingEnrollmentApproval(s)) return "Pay to activate";
   return "Not applied";
 }
 
@@ -69,7 +69,7 @@ export function enrollmentPaymentStatusText(status?: string | null): string {
   if (s === "approved") return "Unpaid — access granted";
   if (s === "rejected") return "Not applicable (application rejected)";
   if (isPendingEnrollmentApproval(s)) {
-    return "Not paid — awaiting approval";
+    return "Not paid — learner can pay now";
   }
   return "Not paid";
 }

@@ -259,7 +259,11 @@ const LearnerPayment = () => {
                 <CardTitle className="text-xl">{courseTitle}</CardTitle>
                 <CardDescription>
                   Amount due: <span className="font-semibold text-foreground">{formattedPrice} RWF</span>
-                  {hasCourseAccess(enrollmentStatus) ? " · Access already granted pending payment" : null}
+                  {pendingApproval
+                    ? " · Pay now — MoMo/promo unlocks access automatically; proof needs admin review"
+                    : hasCourseAccess(enrollmentStatus)
+                      ? " · Access already granted pending payment"
+                      : null}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -330,7 +334,8 @@ const LearnerPayment = () => {
                 {tab === "proof" && (
                   <div className="space-y-3 rounded-xl border p-4">
                     <p className="text-sm text-muted-foreground">
-                      Pay via Equity Bank or MTN using the guidelines, then upload your receipt for confirmation.
+                      Pay via Equity Bank or MTN using the guidelines, then upload your receipt.
+                      An administrator must confirm payment proof before your course is activated.
                     </p>
                     <div className="space-y-2">
                       <Label htmlFor="proof-file">Payment proof (JPG, PNG, PDF)</Label>

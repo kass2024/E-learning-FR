@@ -32,7 +32,6 @@ import {
   Calendar,
   Loader2,
   RefreshCw,
-  CreditCard,
   ArrowRight,
   Play,
   Clock,
@@ -131,20 +130,8 @@ const LearnerDashboard = () => {
       return;
     }
 
-    if (isPendingEnrollmentApproval(status)) {
-      openCourseMaterials(navigate, courseId, "overview");
-      return;
-    }
-
+    // Pending or approved unpaid: allow payment before (or without) manual approval.
     if (canPayForEnrollment(status)) {
-      if (!data?.stripe?.configured) {
-        toast({
-          variant: "destructive",
-          title: "Stripe not configured",
-          description: "Payment keys are missing in backend .env.",
-        });
-        return;
-      }
       localStorage.setItem("parrot_selected_course_id", String(courseId));
       navigate("/dashboard/learner/payment");
       return;
@@ -170,8 +157,9 @@ const LearnerDashboard = () => {
       await enrollInCourse(courseId, studentId, courseLevels[courseId]);
       toast({
         title: "Application submitted",
-        description: `An administrator will review your enrollment. You will get course access once approved.`,
-        duration: 5000,
+        description:
+          "You can pay now with Mobile Money or a promo code (access unlocks automatically). Payment proof needs admin confirmation.",
+        duration: 6000,
       });
       await loadDashboard();
     } catch (err: any) {
@@ -225,20 +213,6 @@ const LearnerDashboard = () => {
         <AdminStatCard label="Certificates" value={stats?.certificates ?? 0} hint="Digital + QR verified" />
         <AdminStatCard label="Streak days" value={stats?.streak_days ?? 0} />
       </div>
-
-      {data?.stripe && !data.stripe.configured && (
-        <Card className="border-amber-200 bg-amber-50/50">
-          <CardContent className="pt-4 flex items-start gap-3">
-            <CreditCard className="h-5 w-5 mt-0.5 text-amber-600" />
-            <div>
-              <p className="font-medium text-sm">Online payments unavailable</p>
-              <p className="text-xs text-muted-foreground">
-                Course checkout is temporarily unavailable. Please contact support if you need to complete a payment.
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      )}
 
       {/* Enrolled courses with progress */}
       {(data?.enrolled_courses ?? []).length > 0 && (
@@ -421,7 +395,9 @@ const LearnerDashboard = () => {
             <BookOpen className="h-5 w-5" />
             Available courses
           </CardTitle>
-          <CardDescription>Browse courses, apply, and access materials after approval. Pay when you receive a payment link.</CardDescription>
+          <CardDescription>
+            Browse courses, apply, then pay anytime — Mobile Money or promo unlocks access automatically; payment proof needs admin review.
+          </CardDescription>
         </CardHeader>
         <CardContent>
           {(data?.available_courses ?? []).length === 0 ? (
@@ -462,7 +438,8 @@ const LearnerDashboard = () => {
                 let badgeLabel = "Available";
                 if (hasAccess && paid) badgeLabel = "Active — paid";
                 else if (hasAccess) badgeLabel = "Active — payment due";
-                else if (canPay) badgeLabel = "Approved — pay now";
+                else if (canPay && pending) badgeLabel = "Pay to activate";
+                else if (canPay) badgeLabel = "Pay now";
                 else if (pending) badgeLabel = "Waiting approval";
                 else if (rejected) badgeLabel = "Rejected";
 

@@ -1336,7 +1336,7 @@ const StudentManagement = () => {
               <div className="space-y-2">
                 <h3 className="text-sm font-medium">Current enrollments</h3>
                 <p className="text-xs text-muted-foreground">
-                  Approve pending applications to grant immediate course access. Track unpaid enrollments and send payment links when ready. Remove learners who refuse to pay.
+                  Learners can pay before approval. MoPay/promo success activates the course automatically; confirm payment-proof rows in Payments. Approve manually only when you want to grant access without a confirmed payment.
                 </p>
                 {studentEnrollments.length === 0 ? (
                   <p className="text-sm text-muted-foreground">No enrollments found for this student.</p>

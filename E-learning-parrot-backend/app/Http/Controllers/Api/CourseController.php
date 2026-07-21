@@ -687,9 +687,16 @@ class CourseController extends Controller
             ], 404);
         }
 
-        if (!in_array($enrollment->status, ['approved', 'paid'], true)) {
+        if (EnrollmentStatusHelper::isPaid($enrollment->status)) {
             return response()->json([
-                'message' => 'Enrollment must be approved before payment can be recorded.',
+                'message' => 'Enrollment is already marked as paid.',
+                'enrollment' => $this->formatEnrollmentForApi($enrollment->fresh('studyShifts'), $course),
+            ]);
+        }
+
+        if (!EnrollmentStatusHelper::canPay($enrollment->status)) {
+            return response()->json([
+                'message' => 'This enrollment cannot be marked as paid in its current status.',
             ], 422);
         }
 
