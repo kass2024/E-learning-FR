@@ -108,7 +108,7 @@ const ADMIN_SECTIONS: Array<{ title: string; links: NavItem[] }> = [
   },
   {
     title: "Account",
-    links: [{ to: "/dashboard/settings", label: "Settings", icon: Settings }],
+    links: [{ to: "/dashboard/settings", label: "Platform settings", icon: Settings }],
   },
 ];
 
@@ -140,10 +140,6 @@ const INSTRUCTOR_SECTIONS: Array<{ title: string; links: NavLinkItem[] }> = [
     title: "Earnings",
     links: [{ to: "/dashboard/instructor/earnings", label: "Earnings & Payouts", icon: Wallet }],
   },
-  {
-    title: "Account",
-    links: [{ to: "/dashboard/settings", label: "Settings", icon: Settings }],
-  },
 ];
 
 const LEARNER_SECTIONS: Array<{ title: string; links: NavLinkItem[] }> = [
@@ -160,10 +156,6 @@ const LEARNER_SECTIONS: Array<{ title: string; links: NavLinkItem[] }> = [
       { to: "/dashboard/progress", label: "Progress", icon: Target },
       { to: "/dashboard/certificates", label: "Certificates", icon: Award },
     ],
-  },
-  {
-    title: "Account",
-    links: [{ to: "/dashboard/settings", label: "Settings", icon: Settings }],
   },
 ];
 
@@ -188,7 +180,6 @@ const DashboardSidebar = ({ userRole, isOpen, onClose }: DashboardSidebarProps) 
 
   const meetingUserLinks: NavLinkItem[] = [
     { to: "/dashboard/appointments", label: "Appointments", icon: CalendarClock },
-    { to: "/dashboard/settings", label: "Settings", icon: Settings },
   ];
 
   const linkPrefetchProps = (to: string) => ({

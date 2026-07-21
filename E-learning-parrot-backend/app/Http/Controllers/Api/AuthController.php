@@ -540,6 +540,47 @@ class AuthController extends Controller
         ]);
     }
 
+    public function uploadAvatar(Request $request)
+    {
+        $data = $request->validate([
+            'role' => 'required|string|max:50',
+            'email' => 'required|email|max:255',
+            'avatar' => 'required|file|max:10240|mimes:png,jpg,jpeg,webp',
+        ]);
+
+        $record = $this->resolveAccountByRole($data['role'], $data['email']);
+        if (!$record) {
+            return response()->json(['message' => 'Account not found'], 404);
+        }
+
+        $path = $request->file('avatar')->store('uploads/avatars', 'public');
+        $url = asset('storage/' . $path);
+
+        $normalized = strtolower(trim($data['role']));
+        if ($normalized === 'learner' || $normalized === 'student') {
+            if (!\Illuminate\Support\Facades\Schema::hasColumn('students', 'avatar')) {
+                return response()->json(['message' => 'Avatar is not supported for learners yet.'], 500);
+            }
+        } elseif ($normalized === 'instructor' || $normalized === 'agent') {
+            if (!\Illuminate\Support\Facades\Schema::hasColumn('agents', 'avatar')) {
+                return response()->json(['message' => 'Avatar is not supported for instructors yet.'], 500);
+            }
+        } else {
+            if (!\Illuminate\Support\Facades\Schema::hasColumn('users', 'avatar')) {
+                return response()->json(['message' => 'Avatar is not supported for this account yet.'], 500);
+            }
+        }
+
+        $record->avatar = $url;
+        $record->save();
+
+        return response()->json([
+            'message' => 'Avatar updated',
+            'url' => $url,
+            'avatar' => $url,
+        ]);
+    }
+
     public function redirectToGoogle()
     {
         return response()->json([

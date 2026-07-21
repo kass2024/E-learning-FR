@@ -68,6 +68,7 @@ Route::prefix('admin')->group(function () {
     Route::post('platform-institutions/my-branding', [PlatformInstitutionController::class, 'updateMyBranding']);
     Route::patch('auth/profile', [AuthController::class, 'updateProfile']);
     Route::post('auth/change-password', [AuthController::class, 'changePassword']);
+    Route::post('auth/avatar', [AuthController::class, 'uploadAvatar']);
     Route::get('auth/google/redirect', [AuthController::class, 'redirectToGoogle']);
     Route::get('auth/google/callback', [AuthController::class, 'handleGoogleCallback']);
 

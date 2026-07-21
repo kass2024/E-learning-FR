@@ -100,7 +100,7 @@ const PartnerInstitutionDashboard = () => {
             <CardContent className="p-5 flex gap-3 text-sm text-muted-foreground">
               <Shield className="h-5 w-5 text-[#0070D0] shrink-0" />
               <p>
-                Update your logo, contact details, and optional SMTP in Settings. Learners who select your institution on signup will see your branding.
+                Update your logo, contact details, and optional SMTP in Platform settings. Learners who select your institution on signup will see your branding.
               </p>
             </CardContent>
           </Card>

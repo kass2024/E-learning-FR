@@ -61,6 +61,7 @@ const LearnerLiveClasses = lazy(() => import("./dashboard/LearnerLiveClasses"));
 const LearnerRecordings = lazy(() => import("./dashboard/LearnerRecordings"));
 const LearnerQuizTake = lazy(() => import("./dashboard/LearnerQuizTake"));
 const Settings = lazy(() => import("./dashboard/Settings"));
+const ProfileManagement = lazy(() => import("./dashboard/ProfileManagement"));
 const AdminAnalyticsPage = lazy(() => import("./dashboard/AdminAnalytics"));
 
 interface DashboardProps {
@@ -211,6 +212,10 @@ const Dashboard = ({ initialRole }: DashboardProps) => {
   };
 
   const renderDashboard = () => {
+    if (location.pathname === "/dashboard/profile") {
+      return <ProfileManagement />;
+    }
+
     if (location.pathname === "/dashboard/settings") {
       return <Settings />;
     }

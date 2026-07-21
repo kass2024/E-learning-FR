@@ -23,6 +23,7 @@ class Student extends Model
         'platform_institution_id',
         'document_path',
         'document_url',
+        'avatar',
     ];
 
     protected $hidden = [
