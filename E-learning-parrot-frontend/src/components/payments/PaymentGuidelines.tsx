@@ -21,7 +21,7 @@ export type PaymentGuidelinesData = {
   note?: string;
 };
 
-const DEFAULT_GUIDELINES: PaymentGuidelinesData = {
+export const DEFAULT_PAYMENT_GUIDELINES: PaymentGuidelinesData = {
   packs: [
     { name: "Pack Intensif", online: "80 000 RWF", in_person: "150 000 RWF", duration: "1 mois" },
     { name: "Pack Réussite", online: "230 000 RWF", in_person: "420 000 RWF", duration: "3 mois", featured: true },
@@ -34,6 +34,9 @@ const DEFAULT_GUIDELINES: PaymentGuidelinesData = {
   ],
   note: "Envoyez la preuve de paiement pour confirmation.",
 };
+
+/** @deprecated Prefer DEFAULT_PAYMENT_GUIDELINES */
+const DEFAULT_GUIDELINES = DEFAULT_PAYMENT_GUIDELINES;
 
 function methodIcon(type: string) {
   if (type === "bank") return Building2;

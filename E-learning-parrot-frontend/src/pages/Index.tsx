@@ -11,7 +11,7 @@ import { DEFAULT_IMAGE } from "@/lib/defaultImages";
 import { getFeaturedCourseImage } from "@/lib/homeImages";
 import { SafeImage } from "@/components/ui/SafeImage";
 import { FEATURE_POSTS, FEATURED_PROGRAM_FALLBACK, HOME_IMAGES, HUB, LANGUAGE_PROGRAMS, TESTIMONIALS, WHY_LEARN } from "@/lib/homeContent";
-import { PaymentGuidelines } from "@/components/payments/PaymentGuidelines";
+import { PaymentPacksBanner } from "@/components/payments/PaymentPacksBanner";
 import {
   ArrowRight,
   CheckCircle2,
@@ -76,9 +76,10 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-white text-[#0B0B0B]">
       <StarPromoBanner />
+      <PaymentPacksBanner />
 
       {/* Hero — Busuu-like: brand, headline, one line, CTAs, visual */}
-      <section className="relative public-page-offset overflow-hidden bg-white">
+      <section className="relative overflow-hidden bg-white">
         <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-[#0070D0] via-[#FCC400] to-[#1F8A4C]" />
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(0,112,208,0.12),transparent_55%)]" />
 
@@ -383,32 +384,6 @@ const Index = () => {
               </StaggerItem>
             ))}
           </StaggerChildren>
-        </div>
-      </section>
-
-      {/* Packs & payment guidelines */}
-      <section className="py-14 md:py-20 bg-[#F7F9FC] border-t border-[#0B0B0B]/05">
-        <div className="container mx-auto px-4">
-          <FadeIn className="text-center max-w-2xl mx-auto mb-8">
-            <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight text-[#0B0B0B] mb-3">
-              Packs & modes de paiement
-            </h2>
-            <p className="text-[#0B0B0B]/55">
-              Choisissez votre pack, payez par Equity Bank ou MTN MoMo, puis envoyez la preuve pour confirmation.
-            </p>
-          </FadeIn>
-          <FadeIn className="mx-auto max-w-2xl">
-            <PaymentGuidelines />
-          </FadeIn>
-          <div className="text-center mt-8">
-            <Button
-              className="rounded-full bg-[#0070D0] hover:bg-[#0058A8] text-white px-8 h-11 font-semibold"
-              onClick={() => navigate("/signup")}
-            >
-              Get started
-              <ArrowRight className="ml-2 h-4 w-4" />
-            </Button>
-          </div>
         </div>
       </section>
 
