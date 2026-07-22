@@ -378,15 +378,27 @@ class MopayGatewayClient
     /**
      * True only when MoPay reports the MoMo debit as fully settled (PIN approved).
      *
-     * Never treat HTTP 200, statusCode 200, momoRef, or "request accepted" as paid —
-     * those appear as soon as the USSD/PIN prompt is sent.
+     * MoPay uses statusDesc: PENDING (prompt open) vs SUCCESSFUL (money moved).
+     * Never treat HTTP/statusCode 200 or momoRef alone as paid.
      *
-     * @param  bool  $allowNumericHttpSuccess  Webhooks may send status:200 when settled;
-     *                                         status-poll must keep this false.
+     * @param  bool  $allowNumericHttpSuccess  Legacy webhook payloads without statusDesc.
      */
     public function isSettledSuccess(mixed $body, bool $allowNumericHttpSuccess = false): bool
     {
         if (!is_array($body) || $body === []) {
+            return false;
+        }
+
+        // MoPay Gateway V1: statusDesc is the authoritative settlement field.
+        $desc = strtolower(trim((string) ($body['statusDesc'] ?? $body['status_desc'] ?? '')));
+        if ($desc !== '') {
+            if ($this->isPendingStatus($desc) || $this->isFailedStatus($desc)) {
+                return false;
+            }
+            if (in_array($desc, ['success', 'successful', 'succeeded', 'completed', 'paid', 'approved'], true)) {
+                return true;
+            }
+            // e.g. TARGET_AUTHORIZATION_ERROR — not settled.
             return false;
         }
 
@@ -404,13 +416,9 @@ class MopayGatewayClient
 
         foreach ($values as $value) {
             if (is_int($value) || (is_string($value) && ctype_digit(trim($value)))) {
-                // Numeric HTTP-style codes mean "API accepted" on status poll — not PIN-approved.
-                // MoPay webhooks sometimes send status:200 only after settlement.
-                if ($allowNumericHttpSuccess) {
-                    $n = (int) $value;
-                    if ($n >= 200 && $n < 300) {
-                        return true;
-                    }
+                // Only exact HTTP 200 (not 201 PENDING) and only for legacy webhooks.
+                if ($allowNumericHttpSuccess && (int) $value === 200) {
+                    return true;
                 }
                 continue;
             }
@@ -420,7 +428,6 @@ class MopayGatewayClient
             }
         }
 
-        // Some gateways use resultCode 0 for settled success (not HTTP 200).
         if (array_key_exists('resultCode', $body) && (string) $body['resultCode'] === '0') {
             return !$this->hasPendingOrFailedHint($values);
         }
@@ -435,9 +442,23 @@ class MopayGatewayClient
             return false;
         }
 
+        $desc = strtolower(trim((string) ($body['statusDesc'] ?? $body['status_desc'] ?? '')));
+        if ($desc !== '') {
+            if ($this->isPendingStatus($desc)) {
+                return false;
+            }
+            if ($this->isFailedStatus($desc) || str_contains($desc, 'target_authorization') || str_contains($desc, 'error')) {
+                return true;
+            }
+        }
+
         foreach ($this->extractStatusValues($body) as $value) {
             $s = strtolower(trim((string) $value));
             if ($s !== '' && $this->isFailedStatus($s)) {
+                return true;
+            }
+            // MoPay uses numeric status 400/500 with empty statusDesc on some failures.
+            if ((is_int($value) || (is_string($value) && ctype_digit(trim($value)))) && (int) $value >= 400) {
                 return true;
             }
         }
@@ -451,7 +472,7 @@ class MopayGatewayClient
      */
     protected function extractStatusValues(array $body): array
     {
-        $keys = ['status', 'transactionStatus', 'state', 'payment_status', 'txnStatus', 'momoStatus'];
+        $keys = ['statusDesc', 'status_desc', 'status', 'transactionStatus', 'state', 'payment_status', 'txnStatus', 'momoStatus'];
         $values = [];
         foreach ($keys as $key) {
             if (array_key_exists($key, $body) && $body[$key] !== null && $body[$key] !== '') {
@@ -535,7 +556,8 @@ class MopayGatewayClient
             Log::info('MoPay transaction still unsettled (awaiting PIN or final status)', [
                 'project' => $this->projectSlug(),
                 'transaction_id' => $trxId,
-                'status' => $body['status'] ?? $body['transactionStatus'] ?? null,
+                'status' => $body['status'] ?? null,
+                'statusDesc' => $body['statusDesc'] ?? null,
                 'statusCode' => $body['statusCode'] ?? null,
             ]);
         }
