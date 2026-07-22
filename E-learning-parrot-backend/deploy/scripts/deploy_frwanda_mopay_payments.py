@@ -82,17 +82,21 @@ for F in "$ENVF" "$APPENV"; do
   grep -q '^MOPAY_ACCOUNT_ID=' "$F" 2>/dev/null && sed -i '/^MOPAY_/d' "$F" || true
   cat >> "$F" <<'EOF'
 
-# MoPay / Mobile Money (Bizao gateway)
+# MoPay / Mobile Money — F&R project (dedicated callback signing key)
+MOPAY_PROJECT_SLUG=frwanda
+MOPAY_MESSAGE_PREFIX=FRWANDA
 MOPAY_ACCOUNT_ID=5e1d5309-2a18-46e9-92d5-6a9abf79039d
 MOPAY_AUTH_KEY=cGFycm90OkZZYXZYVkV0RndHRSUuMzAxIQ==
 MOPAY_SERVER_BASE_URL=http://41.186.14.66:443/
-MOPAY_CALLBACK_SIGNING_KEY=DLMDFJ3asfnaXSnyFfFkNr946jQBjlxdsoNZswonIsE
+MOPAY_CALLBACK_SIGNING_KEY=tfcqzu7dVI19gVUSXU4eOFhiTzfQtLBPwq82gislW6o
 MOPAY_CALLBACK_URL=https://api.frwanda.com/api/admin/payments/mopay/webhook
+MOPAY_CATEGORY=BIZAO
 MOPAY_DEFAULT_CURRENCY=RWF
 MOPAY_DEFAULT_COUNTRY_CODE=rw
 MOPAY_DEFAULT_MNO=mtn
 MOPAY_RECEIVER_ACCOUNT_NO=0788821579
-MOPAY_PAYMENT_TITLE=F&R Rwanda course payment
+MOPAY_PAYMENT_TITLE=FR_Rwanda_course_payment
+MOPAY_PAYMENT_DETAILS=Course_enrollment_payment
 EOF
 done
 
@@ -107,13 +111,28 @@ docker cp /opt/e-learning-frwanda/E-learning-parrot-backend/routes/api.php "$BE_
 docker cp /opt/e-learning-frwanda/E-learning-parrot-backend/database/migrations/. "$BE_CT:/var/www/html/database/migrations/"
 docker cp /opt/e-learning-frwanda/E-learning-parrot-backend/database/seeders/CoursePromoCodeSeeder.php "$BE_CT:/var/www/html/database/seeders/CoursePromoCodeSeeder.php"
 
-# Refresh container env from deploy file if present
-if [ -f "$ENVF" ]; then
-  docker cp "$ENVF" "$BE_CT:/var/www/html/.env" || true
-fi
+# Inject MoPay keys into the LIVE container .env without replacing the whole file
+docker exec "$BE_CT" sh -c 'grep -q "^MOPAY_ACCOUNT_ID=" .env 2>/dev/null && sed -i "/^MOPAY_/d" .env || true'
+docker exec "$BE_CT" sh -c 'cat >> .env <<EOF
+
+MOPAY_PROJECT_SLUG=frwanda
+MOPAY_MESSAGE_PREFIX=FRWANDA
+MOPAY_ACCOUNT_ID=5e1d5309-2a18-46e9-92d5-6a9abf79039d
+MOPAY_AUTH_KEY=cGFycm90OkZZYXZYVkV0RndHRSUuMzAxIQ==
+MOPAY_SERVER_BASE_URL=http://41.186.14.66:443/
+MOPAY_CALLBACK_SIGNING_KEY=tfcqzu7dVI19gVUSXU4eOFhiTzfQtLBPwq82gislW6o
+MOPAY_CALLBACK_URL=https://api.frwanda.com/api/admin/payments/mopay/webhook
+MOPAY_CATEGORY=BIZAO
+MOPAY_DEFAULT_CURRENCY=RWF
+MOPAY_DEFAULT_COUNTRY_CODE=rw
+MOPAY_DEFAULT_MNO=mtn
+MOPAY_RECEIVER_ACCOUNT_NO=0788821579
+MOPAY_PAYMENT_TITLE=FR_Rwanda_course_payment
+MOPAY_PAYMENT_DETAILS=Course_enrollment_payment
+EOF'
 
 docker exec "$BE_CT" php artisan migrate --force
-docker exec "$BE_CT" php artisan db:seed --class=CoursePromoCodeSeeder --force || true
+docker exec "$BE_CT" php artisan db:seed --class=Database\\Seeders\\CoursePromoCodeSeeder --force || true
 docker exec "$BE_CT" php artisan config:clear
 docker exec "$BE_CT" php artisan route:clear
 docker exec "$BE_CT" php artisan storage:link || true

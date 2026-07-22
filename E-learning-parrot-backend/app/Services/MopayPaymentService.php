@@ -5,16 +5,32 @@ namespace App\Services;
 use App\Models\Course;
 use App\Models\CourseEnrollment;
 use App\Models\CoursePayment;
+use App\Models\SiteSetting;
+use App\Services\Mopay\MopayGatewayClient;
 use App\Support\EnrollmentStatusHelper;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
+/**
+ * F&R course enrollment payments on top of the portable MoPay gateway client.
+ * Gateway HTTP/auth lives in MopayGatewayClient so other projects can reuse it with their own env.
+ */
 class MopayPaymentService
 {
+    private readonly MopayGatewayClient $gateway;
+
+    public function __construct(?MopayGatewayClient $gateway = null)
+    {
+        $this->gateway = $gateway ?? new MopayGatewayClient();
+    }
+
+    public function gateway(): MopayGatewayClient
+    {
+        return $this->gateway;
+    }
+
     public function isConfigured(): bool
     {
-        return !empty(config('services.mopay.auth_key'))
-            && !empty(config('services.mopay.server_base_url'));
+        return $this->gateway->isConfigured();
     }
 
     public function assertReady(): array
@@ -23,7 +39,7 @@ class MopayPaymentService
             return [
                 'ok' => false,
                 'status' => 503,
-                'message' => 'Mobile Money is not configured. Set MOPAY_AUTH_KEY and MOPAY_SERVER_BASE_URL in .env.',
+                'message' => 'Mobile Money is not configured. Set MOPAY_AUTH_KEY and MOPAY_SERVER_BASE_URL in this project\'s .env.',
             ];
         }
 
@@ -35,73 +51,16 @@ class MopayPaymentService
         return (int) max(0, round((float) ($course->price ?? 0)));
     }
 
-    /**
-     * Normalize Rwanda phone to local format expected by MoPay (07XXXXXXXX).
-     */
     public function normalizeMsisdn(string $phone): string
     {
-        $digits = preg_replace('/\D+/', '', $phone) ?? '';
-        if (str_starts_with($digits, '250') && strlen($digits) >= 12) {
-            $digits = substr($digits, 3);
-        }
-        if (str_starts_with($digits, '0')) {
-            return $digits;
-        }
-        if (strlen($digits) === 9) {
-            return '0' . $digits;
-        }
-
-        return $digits;
+        return $this->gateway->normalizeMsisdn($phone);
     }
 
     public function authorizationHeader(): string
     {
-        $bearer = trim((string) config('services.mopay.bearer_token'));
-        if ($bearer !== '') {
-            return str_starts_with(strtolower($bearer), 'bearer ') ? $bearer : 'Bearer ' . $bearer;
-        }
-
-        $authKey = trim((string) config('services.mopay.auth_key'));
-        $token = $this->fetchAccessToken($authKey);
-        if ($token) {
-            return 'Bearer ' . $token;
-        }
-
-        // Fallback: auth key as Authorization value (Bizao / MoPay PDF pattern).
-        if (stripos($authKey, 'basic ') === 0 || stripos($authKey, 'bearer ') === 0) {
-            return $authKey;
-        }
-
-        return 'Basic ' . $authKey;
+        return $this->gateway->authorizationHeader();
     }
 
-    private function fetchAccessToken(string $authKey): ?string
-    {
-        $base = rtrim((string) config('services.mopay.server_base_url'), '/');
-        $basic = stripos($authKey, 'basic ') === 0 ? $authKey : 'Basic ' . $authKey;
-
-        foreach ([$base . '/token', 'https://preproduction-gateway.bizao.com/token'] as $url) {
-            try {
-                $res = Http::withHeaders([
-                    'Authorization' => $basic,
-                    'Accept' => 'application/json',
-                    'Content-Type' => 'application/x-www-form-urlencoded',
-                ])->asForm()->timeout(20)->post($url, ['grant_type' => 'client_credentials']);
-
-                if ($res->successful() && $res->json('access_token')) {
-                    return (string) $res->json('access_token');
-                }
-            } catch (\Throwable $e) {
-                Log::warning('MoPay token fetch failed', ['url' => $url, 'error' => $e->getMessage()]);
-            }
-        }
-
-        return null;
-    }
-
-    /**
-     * Register callback_url + callback_signing_key on the MoPay settings endpoint.
-     */
     public function registerCallbackSettings(?string $callbackUrl = null): array
     {
         $ready = $this->assertReady();
@@ -118,32 +77,12 @@ class MopayPaymentService
             ?: (string) config('services.mopay.callback_url')
             ?: rtrim((string) config('app.url'), '/') . '/api/admin/payments/mopay/webhook';
 
-        $base = rtrim((string) config('services.mopay.server_base_url'), '/');
-        $settingsUrl = $base . '/api/v1/user/settings';
-        $headers = [
-            'Authorization' => $this->authorizationHeader(),
-            'Accept' => 'application/json',
-            'Content-Type' => 'application/json',
-        ];
+        $result = $this->gateway->registerCallbackSettings($callbackUrl);
+        if (!$result['ok'] && ($result['callback_url_body'] ?? '') === 'MOPAY_CALLBACK_SIGNING_KEY is empty.') {
+            return ['ok' => false, 'status' => 500, 'message' => 'MOPAY_CALLBACK_SIGNING_KEY is empty.'];
+        }
 
-        $urlRes = Http::withHeaders($headers)->timeout(30)->post($settingsUrl, [
-            'id' => 'callback_url',
-            'value' => $callbackUrl,
-        ]);
-
-        $keyRes = Http::withHeaders($headers)->timeout(30)->post($settingsUrl, [
-            'id' => 'callback_signing_key',
-            'value' => $secret,
-        ]);
-
-        return [
-            'ok' => $urlRes->successful() && $keyRes->successful(),
-            'callback_url' => $callbackUrl,
-            'callback_url_http' => $urlRes->status(),
-            'callback_url_body' => $urlRes->body(),
-            'signing_key_http' => $keyRes->status(),
-            'signing_key_body' => $keyRes->body(),
-        ];
+        return $result;
     }
 
     public function requestPayment(Course $course, int $studentId, string $phone, string $mno = 'mtn'): array
@@ -171,73 +110,50 @@ class MopayPaymentService
         }
 
         $msisdn = $this->normalizeMsisdn($phone);
-        if (strlen($msisdn) < 10) {
+        if (strlen($msisdn) < 12) {
             return ['ok' => false, 'status' => 422, 'message' => 'Enter a valid MTN/Airtel Rwanda mobile money number.'];
         }
 
-        $transactionId = 'FRW_' . $course->id . '_' . $studentId . '_' . time() . '_' . random_int(1000, 9999);
-        $transactionId = preg_replace('/[^A-Z0-9_]/', '', strtoupper($transactionId)) ?: ('FRW_' . time());
+        $slug = strtoupper(preg_replace('/[^A-Z0-9]/', '', (string) config('services.mopay.project_slug', 'FRW')) ?: 'FRW');
+        $transactionId = $slug . '_' . $course->id . '_' . $studentId . '_' . time() . '_' . random_int(1000, 9999);
+        $transactionId = preg_replace('/[^A-Z0-9_]/', '', strtoupper($transactionId)) ?: ($slug . '_' . time());
 
-        $base = rtrim((string) config('services.mopay.server_base_url'), '/');
         $currency = (string) config('services.mopay.default_currency', 'RWF');
-        $country = strtolower((string) config('services.mopay.default_country_code', 'rw'));
-        $receiver = trim(\App\Models\SiteSetting::current()->resolvedMomoReceiverPhone());
+        $receiver = trim(SiteSetting::current()->resolvedMomoReceiverPhone());
         if ($receiver === '') {
             $receiver = trim((string) config('services.mopay.receiver_account_no'));
         }
-        $useTransfer = $receiver !== '';
 
-        $url = $useTransfer ? $base . '/api/v1/payment' : $base . '/api/v2/momo/debit';
-
-        if ($useTransfer) {
-            $payload = [
-                'transactionId' => $transactionId,
-                'account_no' => $msisdn,
-                'title' => (string) config('services.mopay.payment_title', 'F&R Rwanda course payment'),
-                'details' => 'Course: ' . ($course->title ?? $course->id),
-                'payment_type' => 'momo',
-                'amount' => $amount,
-                'currency' => $currency,
-                'message' => 'FRWANDA_COURSE_PAYMENT',
-                'transfers' => [[
-                    'transactionId' => $transactionId . '_T',
-                    'account_no' => $this->normalizeMsisdn($receiver),
-                    'payment_type' => 'momo',
-                    'amount' => $amount,
-                    'currency' => $currency,
-                    'message' => 'FRWANDA_RECEIVER_TRANSFER',
-                ]],
-            ];
-        } else {
-            $payload = [
-                'account_no' => $msisdn,
-                'payment_type' => 'momo',
-                'message' => 'FRWANDA_COURSE_PAYMENT',
-                'transactionId' => $transactionId,
-                'currency' => $currency,
-                'amount' => $amount,
-                'country_code' => $country,
-                'mno' => $mno ?: 'mtn',
-            ];
-        }
-
-        $headers = [
-            'Authorization' => $this->authorizationHeader(),
-            'Accept' => 'application/json',
-            'Content-Type' => 'application/json',
-            'category' => 'BIZAO',
-        ];
+        $prefix = (string) config('services.mopay.message_prefix', 'FRWANDA');
+        $title = (string) config('services.mopay.payment_title', 'FR_Rwanda_course_payment');
 
         try {
-            $res = Http::withHeaders($headers)->timeout(60)->post($url, $payload);
+            $gatewayResult = $this->gateway->initiateCollection([
+                'account_no' => $msisdn,
+                'amount' => $amount,
+                'transaction_id' => $transactionId,
+                'title' => $title,
+                'details' => 'Course: ' . ($course->title ?? $course->id),
+                'message' => $prefix . '_COURSE_PAYMENT',
+                'transfer_message' => $prefix . '_RECEIVER_TRANSFER',
+                'receiver_account_no' => $receiver,
+                'currency' => $currency,
+                'country_code' => (string) config('services.mopay.default_country_code', 'rw'),
+                'mno' => $mno ?: (string) config('services.mopay.default_mno', 'mtn'),
+                'use_transfer' => $receiver !== '',
+            ]);
         } catch (\Throwable $e) {
-            Log::error('MoPay request failed', ['error' => $e->getMessage()]);
+            Log::error('MoPay request failed', [
+                'project' => config('services.mopay.project_slug'),
+                'error' => $e->getMessage(),
+            ]);
 
             return ['ok' => false, 'status' => 502, 'message' => 'Unable to reach Mobile Money gateway. Try again shortly.'];
         }
 
-        $body = $res->json() ?? [];
-        $httpOk = $res->successful();
+        $body = is_array($gatewayResult['response'] ?? null) ? $gatewayResult['response'] : [];
+        $httpOk = (bool) ($gatewayResult['ok'] ?? false);
+        $msisdnStored = (string) ($gatewayResult['msisdn'] ?? $msisdn);
 
         $payment = CoursePayment::create([
             'course_id' => $course->id,
@@ -246,20 +162,22 @@ class MopayPaymentService
             'currency' => strtolower($currency),
             'provider' => 'mopay',
             'external_reference' => $transactionId,
-            'msisdn' => $msisdn,
+            'msisdn' => $msisdnStored,
             'status' => $httpOk ? 'processing' : 'failed',
             'metadata' => [
-                'request' => $payload,
+                'request' => $gatewayResult['request'] ?? null,
                 'response' => $body,
-                'http_status' => $res->status(),
-                'flow' => $useTransfer ? 'payment_with_transfer' : 'debit_only',
+                'http_status' => $gatewayResult['http_status'] ?? null,
+                'flow' => $gatewayResult['flow'] ?? null,
+                'auth_mode' => $gatewayResult['auth_mode'] ?? null,
+                'project' => config('services.mopay.project_slug'),
             ],
         ]);
 
         if (!$httpOk) {
             $message = is_array($body)
-                ? (string) ($body['message'] ?? $body['error'] ?? $res->body())
-                : $res->body();
+                ? (string) ($body['message'] ?? $body['error'] ?? ($gatewayResult['raw'] ?? ''))
+                : (string) ($gatewayResult['raw'] ?? '');
 
             return [
                 'ok' => false,
@@ -277,7 +195,7 @@ class MopayPaymentService
             'transaction_id' => $transactionId,
             'amount' => $amount,
             'currency' => $currency,
-            'msisdn' => $msisdn,
+            'msisdn' => $msisdnStored,
         ];
     }
 

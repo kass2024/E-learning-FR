@@ -67,18 +67,27 @@ return [
         'key'    => env('STRIPE_PUBLIC_KEY'),
     ],
 
+    /*
+    | MoPay Gateway V1 — each deployed product must use its own MOPAY_* credentials.
+    | Do not share AUTH_KEY / CALLBACK_SIGNING_KEY / CALLBACK_URL across projects on the same VPS
+    | unless MoPay issued a dedicated merchant account per product (callback_url is per-merchant).
+    */
     'mopay' => [
+        'project_slug' => env('MOPAY_PROJECT_SLUG', 'frwanda'),
+        'message_prefix' => env('MOPAY_MESSAGE_PREFIX', 'FRWANDA'),
         'account_id' => env('MOPAY_ACCOUNT_ID'),
         'auth_key' => env('MOPAY_AUTH_KEY'),
         'bearer_token' => env('MOPAY_BEARER_TOKEN'),
         'server_base_url' => rtrim(env('MOPAY_SERVER_BASE_URL', 'http://41.186.14.66:443/'), '/'),
+        'token_url' => env('MOPAY_TOKEN_URL'),
+        'category' => env('MOPAY_CATEGORY', 'BIZAO'),
         'callback_signing_key' => env('MOPAY_CALLBACK_SIGNING_KEY'),
         'callback_url' => env('MOPAY_CALLBACK_URL'),
         'default_country_code' => env('MOPAY_DEFAULT_COUNTRY_CODE', 'rw'),
         'default_mno' => env('MOPAY_DEFAULT_MNO', 'mtn'),
         'default_currency' => env('MOPAY_DEFAULT_CURRENCY', 'RWF'),
         'receiver_account_no' => env('MOPAY_RECEIVER_ACCOUNT_NO', '0788821579'),
-        'payment_title' => env('MOPAY_PAYMENT_TITLE', 'F&R Rwanda course payment'),
+        'payment_title' => env('MOPAY_PAYMENT_TITLE', 'FR_Rwanda_course_payment'),
         'payment_details' => env('MOPAY_PAYMENT_DETAILS', 'Course enrollment payment'),
     ],
 
