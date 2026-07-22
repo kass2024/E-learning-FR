@@ -17,29 +17,35 @@ export const HOME_MISSION = {
     "To deliver quality language education at affordable prices with experienced instructors, flexible schedules, and personalized feedback.",
 } as const;
 
-/** Only language courses taught at F&R Rwanda */
+/** Flyer languages — Busuu-style picker (SVG flags work on all platforms) */
 export const LANGUAGE_PROGRAMS = [
   {
     title: "English",
     subtitle: "Academic · Business · Everyday",
-    flag: "🇬🇧",
+    flagCode: "gb",
+    flagSrc: "/flags/gb.svg",
+    search: "English",
     image: HOME_UNIQUE_IMAGES.langEnglish,
   },
   {
     title: "French",
     subtitle: "Conversation · DELF / DALF ready",
-    flag: "🇫🇷",
+    flagCode: "fr",
+    flagSrc: "/flags/fr.svg",
+    search: "French",
     image: HOME_UNIQUE_IMAGES.langFrench,
   },
   {
     title: "Kinyarwanda",
     subtitle: "Communication · Culture · Confidence",
-    flag: "🇷🇼",
+    flagCode: "rw",
+    flagSrc: "/flags/rw.svg",
+    search: "Kinyarwanda",
     image: HOME_UNIQUE_IMAGES.langKorean,
   },
 ] as const;
 
-/** Feature posts used on the home page */
+/** Busuu-style alternating feature posts */
 export const FEATURE_POSTS = [
   {
     overline: "An interactive community",
@@ -80,7 +86,7 @@ export const FEATURE_POSTS = [
   {
     overline: "Self-led learning",
     title: "Learn your way",
-    body: "Whatever your reason for learning a language, you're in control. Choose monthly, termly, or VIP one-on-one plans that fit your schedule.",
+    body: "Whatever your reason for learning a language, you’re in control. Choose monthly, termly, or VIP one-on-one plans that fit your schedule.",
     image: HOME_UNIQUE_IMAGES.featVideo,
     accent: "green" as const,
     mock: {
@@ -93,20 +99,20 @@ export const FEATURE_POSTS = [
 
 export const WHY_LEARN = [
   {
-    title: "Learn with confidence",
-    desc: "Courses created for real conversations — speaking, listening, reading, and writing with expert guidance.",
+    title: "Experienced instructors",
+    desc: "Learn with qualified teachers who give personalized feedback.",
   },
   {
-    title: "Learn for real life",
-    desc: "Live online classes and practice that prepare you for school, work, travel, and everyday situations.",
+    title: "Interactive online classes",
+    desc: "Engaging live sessions that keep you speaking and progressing.",
   },
   {
-    title: "Learn your way",
-    desc: "Flexible schedules, monthly or termly plans, and VIP one-on-one options that fit your lifestyle.",
+    title: "Flexible schedules",
+    desc: "Study at your pace with monthly, termly, or VIP options.",
   },
   {
-    title: "Learn together",
-    desc: "Interactive sessions, personalized feedback, and a supportive community of language learners.",
+    title: "Real-life confidence",
+    desc: "Build communication skills for school, career, and daily life.",
   },
 ] as const;
 
@@ -209,7 +215,6 @@ export const TESTIMONIALS = [
   },
 ] as const;
 
-/** Kept for type compatibility; homepage no longer markets exam programs. */
 export const EXAM_PROGRAMS = [] as const;
 
 export { HUB };
