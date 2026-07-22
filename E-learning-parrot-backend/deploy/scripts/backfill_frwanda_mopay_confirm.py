@@ -21,9 +21,17 @@ use App\Services\ExternalPayNowService;
 $svc = app(MopayPaymentService::class);
 $ext = app(ExternalPayNowService::class);
 
-echo "Registering callbacks...\n";
-$reg = $svc->registerCallbackSettings();
-echo "callback_ok=" . (!empty($reg["ok"]) ? "yes" : "no") . " url=" . ($reg["callback_url"] ?? "") . "\n";
+if (getenv("MOPAY_REGISTER_CALLBACKS") === "1") {
+  echo "Registering callbacks...\n";
+  try {
+    $reg = $svc->registerCallbackSettings();
+    echo "callback_ok=" . (!empty($reg["ok"]) ? "yes" : "no") . " url=" . ($reg["callback_url"] ?? "") . "\n";
+  } catch (Throwable $e) {
+    echo "callback_register_failed=" . $e->getMessage() . "\n";
+  }
+} else {
+  echo "Skipping callback registration (set MOPAY_REGISTER_CALLBACKS=1 to enable)\n";
+}
 
 $pending = CoursePayment::query()
   ->where("provider", "mopay")
@@ -37,8 +45,12 @@ echo "learner_pending=" . $pending->count() . "\n";
 foreach ($pending as $p) {
   $ref = (string) $p->external_reference;
   echo "sync {$ref} ... ";
-  $r = $svc->syncPaymentFromGateway($ref);
-  echo ($r["payment"]["status"] ?? "?") . " | " . ($r["enrollment"]["status"] ?? "-") . " | " . ($r["message"] ?? "") . "\n";
+  try {
+    $r = $svc->syncPaymentFromGateway($ref);
+    echo ($r["payment"]["status"] ?? "?") . " | " . ($r["enrollment"]["status"] ?? "-") . " | " . ($r["message"] ?? "") . "\n";
+  } catch (Throwable $e) {
+    echo "ERR " . $e->getMessage() . "\n";
+  }
 }
 
 $extPending = App\Models\ExternalCoursePayment::query()
@@ -50,8 +62,12 @@ echo "external_pending=" . $extPending->count() . "\n";
 foreach ($extPending as $p) {
   $ref = (string) $p->external_reference;
   echo "ext {$ref} ... ";
-  $r = $ext->syncPaymentFromGateway($ref);
-  echo (($r["payment"]["status"] ?? "?")) . " | " . ($r["message"] ?? "") . "\n";
+  try {
+    $r = $ext->syncPaymentFromGateway($ref);
+    echo (($r["payment"]["status"] ?? "?")) . " | " . ($r["message"] ?? "") . "\n";
+  } catch (Throwable $e) {
+    echo "ERR " . $e->getMessage() . "\n";
+  }
 }
 '''
 

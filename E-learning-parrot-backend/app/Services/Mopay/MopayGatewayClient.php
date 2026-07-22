@@ -358,6 +358,140 @@ class MopayGatewayClient
     }
 
     /**
+     * True only when MoPay reports the MoMo debit as fully settled (PIN approved).
+     *
+     * Never treat HTTP 200, statusCode 200, momoRef, or "request accepted" as paid —
+     * those appear as soon as the USSD/PIN prompt is sent.
+     *
+     * @param  bool  $allowNumericHttpSuccess  Webhooks may send status:200 when settled;
+     *                                         status-poll must keep this false.
+     */
+    public function isSettledSuccess(mixed $body, bool $allowNumericHttpSuccess = false): bool
+    {
+        if (!is_array($body) || $body === []) {
+            return false;
+        }
+
+        $values = $this->extractStatusValues($body);
+
+        foreach ($values as $value) {
+            $s = strtolower(trim((string) $value));
+            if ($s === '') {
+                continue;
+            }
+            if ($this->isPendingStatus($s) || $this->isFailedStatus($s)) {
+                return false;
+            }
+        }
+
+        foreach ($values as $value) {
+            if (is_int($value) || (is_string($value) && ctype_digit(trim($value)))) {
+                // Numeric HTTP-style codes mean "API accepted" on status poll — not PIN-approved.
+                // MoPay webhooks sometimes send status:200 only after settlement.
+                if ($allowNumericHttpSuccess) {
+                    $n = (int) $value;
+                    if ($n >= 200 && $n < 300) {
+                        return true;
+                    }
+                }
+                continue;
+            }
+            $s = strtolower(trim((string) $value));
+            if (in_array($s, ['success', 'successful', 'succeeded', 'completed', 'paid', 'approved'], true)) {
+                return true;
+            }
+        }
+
+        // Some gateways use resultCode 0 for settled success (not HTTP 200).
+        if (array_key_exists('resultCode', $body) && (string) $body['resultCode'] === '0') {
+            return !$this->hasPendingOrFailedHint($values);
+        }
+
+        return false;
+    }
+
+    /** Explicit failure / cancel / timeout for webhook handling. */
+    public function isSettledFailure(mixed $body): bool
+    {
+        if (!is_array($body) || $body === []) {
+            return false;
+        }
+
+        foreach ($this->extractStatusValues($body) as $value) {
+            $s = strtolower(trim((string) $value));
+            if ($s !== '' && $this->isFailedStatus($s)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * @param  array<string, mixed>  $body
+     * @return list<mixed>
+     */
+    protected function extractStatusValues(array $body): array
+    {
+        $keys = ['status', 'transactionStatus', 'state', 'payment_status', 'txnStatus', 'momoStatus'];
+        $values = [];
+        foreach ($keys as $key) {
+            if (array_key_exists($key, $body) && $body[$key] !== null && $body[$key] !== '') {
+                $values[] = $body[$key];
+            }
+        }
+        if (isset($body['data']) && is_array($body['data'])) {
+            foreach ($keys as $key) {
+                if (array_key_exists($key, $body['data']) && $body['data'][$key] !== null && $body['data'][$key] !== '') {
+                    $values[] = $body['data'][$key];
+                }
+            }
+        }
+
+        return $values;
+    }
+
+    /** @param  list<mixed>  $values */
+    protected function hasPendingOrFailedHint(array $values): bool
+    {
+        foreach ($values as $value) {
+            $s = strtolower(trim((string) $value));
+            if ($s !== '' && ($this->isPendingStatus($s) || $this->isFailedStatus($s))) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    protected function isPendingStatus(string $s): bool
+    {
+        foreach (['pending', 'processing', 'initiated', 'queued', 'waiting', 'inprogress', 'in_progress', 'submitted', 'ongoing'] as $hint) {
+            if ($s === $hint || str_contains($s, $hint)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    protected function isFailedStatus(string $s): bool
+    {
+        foreach (['fail', 'reject', 'cancel', 'timeout', 'expired', 'declined', 'error'] as $hint) {
+            if ($s === $hint || str_contains($s, $hint)) {
+                // Avoid matching "successful" via "fail" — not needed; "successful" has no fail hint.
+                if (str_contains($s, 'success')) {
+                    continue;
+                }
+
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
      * GET /api/v1/momo/transactionstatus/{trxId}
      *
      * @return array{ok:bool,http_status:int,response:mixed,raw:string,success:bool}
@@ -375,20 +509,17 @@ class MopayGatewayClient
         $body = $res->json();
         $raw = $res->body();
 
-        $statusStr = '';
-        if (is_array($body)) {
-            $statusStr = strtolower((string) ($body['status'] ?? $body['transactionStatus'] ?? $body['state'] ?? ''));
-            if ($statusStr === '' && isset($body['message']) && is_string($body['message'])) {
-                $statusStr = strtolower($body['message']);
-            }
-        }
+        // Only PIN-approved / settled statuses count — never HTTP/statusCode 200 alone.
+        $success = $res->successful() && $this->isSettledSuccess(is_array($body) ? $body : null);
 
-        $success = $res->successful() && (
-            in_array($statusStr, ['success', 'successful', 'completed', 'paid', 'ok', '200'], true)
-            || (isset($body['statusCode']) && (int) $body['statusCode'] === 200)
-            || (isset($body['status']) && (int) $body['status'] === 200)
-            || (is_array($body) && !empty($body['momoRef']))
-        );
+        if ($res->successful() && is_array($body) && !$success) {
+            Log::info('MoPay transaction still unsettled (awaiting PIN or final status)', [
+                'project' => $this->projectSlug(),
+                'transaction_id' => $trxId,
+                'status' => $body['status'] ?? $body['transactionStatus'] ?? null,
+                'statusCode' => $body['statusCode'] ?? null,
+            ]);
+        }
 
         return [
             'ok' => $res->successful(),

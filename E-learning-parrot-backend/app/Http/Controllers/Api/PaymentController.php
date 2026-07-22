@@ -432,19 +432,25 @@ class PaymentController extends Controller
             ], 404);
         }
 
-        $success = in_array($status, ['success', 'successful', 'completed', 'paid', 'ok'], true)
-            || (isset($data['statusCode']) && (int) $data['statusCode'] === 200);
+        $gateway = app(\App\Services\Mopay\MopayGatewayClient::class);
+        $payloadBody = is_array($data) ? $data : [];
+        // Webhooks may use numeric status 200 after PIN approval; never use statusCode alone.
+        $success = $gateway->isSettledSuccess($payloadBody, true)
+            || in_array($status, ['success', 'successful', 'succeeded', 'completed', 'paid', 'approved'], true);
+        $failed = $gateway->isSettledFailure($payloadBody)
+            || in_array($status, ['failed', 'fail', 'rejected', 'cancelled', 'canceled', 'timeout', 'expired'], true);
 
         if ($success) {
             if ($knownExternal) {
                 app(\App\Services\ExternalPayNowService::class)
-                    ->handleWebhookSuccess($transactionId, is_array($data) ? $data : []);
+                    ->handleWebhookSuccess($transactionId, $payloadBody);
             }
             if ($knownLearner) {
-                $this->mopayPayments->handleWebhookSuccess($transactionId, is_array($data) ? $data : []);
+                $this->mopayPayments->handleWebhookSuccess($transactionId, $payloadBody);
                 ApiListCache::bump('payments');
             }
-        } else {
+        } elseif ($failed) {
+            // Only mark failed on explicit failure — keep processing while PIN prompt is pending.
             if ($knownLearner) {
                 $payment = CoursePayment::where('external_reference', $baseRef)->first()
                     ?? CoursePayment::where('external_reference', $transactionId)->first();
