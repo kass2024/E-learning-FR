@@ -202,8 +202,7 @@ class MopayPaymentService
         }
 
         $slug = strtoupper(preg_replace('/[^A-Z0-9]/', '', (string) config('services.mopay.project_slug', 'FRW')) ?: 'FRW');
-        $transactionId = $slug . '_' . $course->id . '_' . $studentId . '_' . time() . '_' . random_int(1000, 9999);
-        $transactionId = preg_replace('/[^A-Z0-9_]/', '', strtoupper($transactionId)) ?: ($slug . '_' . time());
+        $transactionId = $this->gateway->newTransactionId($slug . '_' . $course->id . '_' . $studentId);
 
         $currency = (string) config('services.mopay.default_currency', 'RWF');
         $prefix = (string) config('services.mopay.message_prefix', 'FRWANDA');
@@ -236,6 +235,10 @@ class MopayPaymentService
         $body = is_array($gatewayResult['response'] ?? null) ? $gatewayResult['response'] : [];
         $httpOk = (bool) ($gatewayResult['ok'] ?? false);
         $msisdnStored = (string) ($gatewayResult['msisdn'] ?? $msisdn);
+        $transactionId = (string) ($gatewayResult['transaction_id'] ?? $transactionId);
+        $failureReason = $httpOk
+            ? null
+            : (string) ($gatewayResult['error_message'] ?? $this->gateway->humanizeError($body));
 
         $payment = CoursePayment::create([
             'course_id' => $course->id,
@@ -257,18 +260,15 @@ class MopayPaymentService
                 'course_price' => $coursePrice,
                 'amount_remaining_before' => $remaining,
                 'receiver_from_settings' => true,
+                'failure_reason' => $failureReason,
             ],
         ]);
 
         if (!$httpOk) {
-            $message = is_array($body)
-                ? (string) ($body['message'] ?? $body['error'] ?? ($gatewayResult['raw'] ?? ''))
-                : (string) ($gatewayResult['raw'] ?? '');
-
             return [
                 'ok' => false,
                 'status' => 422,
-                'message' => $message !== '' ? $message : 'Mobile Money request was rejected.',
+                'message' => $failureReason ?: 'Mobile Money request was rejected.',
                 'payment_id' => $payment->id,
                 'transaction_id' => $transactionId,
             ];
@@ -420,10 +420,35 @@ class MopayPaymentService
                     'status' => $payment->status,
                     'transaction_id' => $payment->external_reference,
                     'amount' => (int) round($payment->amount_cents / 100),
+                    'error_message' => null,
                 ],
                 'enrollment' => $progress,
             ];
         }
+
+        if (!empty($gateway['failed'])) {
+            $this->handleWebhookFailure(
+                (string) $payment->external_reference,
+                is_array($gateway['response']) ? $gateway['response'] : ['source' => 'status_poll'],
+                (string) ($gateway['error_message'] ?? '')
+            );
+            $payment = $payment->fresh();
+            $meta = is_array($payment->metadata) ? $payment->metadata : [];
+
+            return [
+                'ok' => true,
+                'message' => (string) ($meta['failure_reason'] ?? $gateway['error_message'] ?? 'Payment failed.'),
+                'payment' => [
+                    'id' => $payment->id,
+                    'status' => $payment->status,
+                    'transaction_id' => $payment->external_reference,
+                    'amount' => (int) round($payment->amount_cents / 100),
+                    'error_message' => (string) ($meta['failure_reason'] ?? $gateway['error_message'] ?? 'Payment failed.'),
+                ],
+            ];
+        }
+
+        $meta = is_array($payment->metadata) ? $payment->metadata : [];
 
         return [
             'ok' => true,
@@ -433,6 +458,7 @@ class MopayPaymentService
                 'status' => $payment->status,
                 'transaction_id' => $payment->external_reference,
                 'amount' => (int) round($payment->amount_cents / 100),
+                'error_message' => $meta['failure_reason'] ?? null,
             ],
             'gateway' => [
                 'http_status' => $gateway['http_status'],
@@ -501,12 +527,43 @@ class MopayPaymentService
             $payment->paid_at = now();
             $meta = $payment->metadata ?? [];
             $meta['webhook'] = $data;
+            unset($meta['failure_reason']);
             $payment->metadata = $meta;
             $payment->save();
         }
 
         // Activate on any successful payment; partial_paid if balance remains.
         $this->applyEnrollmentPaymentProgress((int) $payment->course_id, (int) $payment->student_id);
+
+        return true;
+    }
+
+    public function handleWebhookFailure(string $transactionId, array $data, ?string $reason = null): bool
+    {
+        $baseRef = preg_replace('/_T$/', '', $transactionId) ?: $transactionId;
+        $payment = CoursePayment::query()
+            ->whereIn('external_reference', array_values(array_unique([$transactionId, $baseRef])))
+            ->orderByDesc('id')
+            ->first();
+
+        if (!$payment) {
+            return false;
+        }
+        if (in_array($payment->status, ['paid', 'succeeded', 'completed'], true)) {
+            return false;
+        }
+
+        $friendly = $reason !== null && trim($reason) !== ''
+            ? trim($reason)
+            : $this->gateway->humanizeError($data);
+
+        $payment->status = 'failed';
+        $meta = is_array($payment->metadata) ? $payment->metadata : [];
+        $meta['webhook'] = $data;
+        $meta['failure_reason'] = $friendly;
+        $meta['raw_failure'] = $this->gateway->extractErrorText($data);
+        $payment->metadata = $meta;
+        $payment->save();
 
         return true;
     }

@@ -122,8 +122,7 @@ class ExternalPayNowService
         }
 
         $slug = strtoupper(preg_replace('/[^A-Z0-9]/', '', (string) config('services.mopay.project_slug', 'FRW')) ?: 'FRW');
-        $transactionId = $slug . 'EXT_' . $course->id . '_' . time() . '_' . random_int(1000, 9999);
-        $transactionId = preg_replace('/[^A-Z0-9_]/', '', strtoupper($transactionId)) ?: ('FRWEXT_' . time());
+        $transactionId = $this->gateway->newTransactionId($slug . 'EXT_' . $course->id);
 
         $currency = (string) config('services.mopay.default_currency', 'RWF');
         $prefix = (string) config('services.mopay.message_prefix', 'FRWANDA');
@@ -151,6 +150,10 @@ class ExternalPayNowService
 
         $httpOk = (bool) ($gatewayResult['ok'] ?? false);
         $body = is_array($gatewayResult['response'] ?? null) ? $gatewayResult['response'] : [];
+        $transactionId = (string) ($gatewayResult['transaction_id'] ?? $transactionId);
+        $failureReason = $httpOk
+            ? null
+            : (string) ($gatewayResult['error_message'] ?? $this->gateway->humanizeError($body));
 
         $payment = ExternalCoursePayment::create([
             'course_id' => $course->id,
@@ -173,18 +176,16 @@ class ExternalPayNowService
                 'http_status' => $gatewayResult['http_status'] ?? null,
                 'auth_mode' => $gatewayResult['auth_mode'] ?? null,
                 'receiver_from_settings' => true,
+                'failure_reason' => $failureReason,
             ],
         ]);
 
         if (!$httpOk) {
-            $message = is_array($body)
-                ? (string) ($body['message'] ?? $body['error'] ?? ($gatewayResult['raw'] ?? ''))
-                : (string) ($gatewayResult['raw'] ?? '');
-
             return [
                 'ok' => false,
                 'status' => 422,
-                'message' => $message !== '' ? $message : 'Mobile Money request was rejected.',
+                'message' => $failureReason ?: 'Mobile Money request was rejected.',
+                'error_code' => is_array($body) ? ($body['status'] ?? $body['code'] ?? null) : null,
                 'transaction_id' => $transactionId,
                 'payment' => $this->mapPayment($payment),
             ];
@@ -246,6 +247,20 @@ class ExternalPayNowService
             ];
         }
 
+        if (!empty($gateway['failed'])) {
+            $this->handleWebhookFailure(
+                (string) $payment->external_reference,
+                is_array($gateway['response']) ? $gateway['response'] : ['source' => 'status_poll'],
+                (string) ($gateway['error_message'] ?? '')
+            );
+
+            return [
+                'ok' => true,
+                'message' => (string) ($gateway['error_message'] ?? 'Payment failed.'),
+                'payment' => $this->mapPayment($payment->fresh()),
+            ];
+        }
+
         return [
             'ok' => true,
             'message' => 'Payment still processing.',
@@ -265,11 +280,37 @@ class ExternalPayNowService
             $payment->paid_at = now();
             $meta = $payment->metadata ?? [];
             $meta['webhook'] = $data;
+            unset($meta['failure_reason']);
             $payment->metadata = $meta;
             $payment->save();
         }
 
         $this->ensureReceiptEmailed($payment->fresh());
+
+        return true;
+    }
+
+    public function handleWebhookFailure(string $transactionId, array $data, ?string $reason = null): bool
+    {
+        $payment = $this->findByReference($transactionId);
+        if (!$payment) {
+            return false;
+        }
+        if (in_array($payment->status, ['paid', 'succeeded', 'completed'], true)) {
+            return false;
+        }
+
+        $friendly = $reason !== null && trim($reason) !== ''
+            ? trim($reason)
+            : $this->gateway->humanizeError($data);
+
+        $payment->status = 'failed';
+        $meta = is_array($payment->metadata) ? $payment->metadata : [];
+        $meta['webhook'] = $data;
+        $meta['failure_reason'] = $friendly;
+        $meta['raw_failure'] = $this->gateway->extractErrorText($data);
+        $payment->metadata = $meta;
+        $payment->save();
 
         return true;
     }
@@ -334,6 +375,15 @@ class ExternalPayNowService
      */
     public function mapPayment(ExternalCoursePayment $payment): array
     {
+        $meta = is_array($payment->metadata) ? $payment->metadata : [];
+        $errorMessage = null;
+        if (in_array($payment->status, ['failed', 'cancelled', 'canceled'], true)) {
+            $errorMessage = (string) ($meta['failure_reason'] ?? '');
+            if ($errorMessage === '') {
+                $errorMessage = $this->gateway->humanizeError($meta['webhook'] ?? $meta['response'] ?? null);
+            }
+        }
+
         return [
             'id' => $payment->id,
             'course_id' => $payment->course_id,
@@ -348,6 +398,7 @@ class ExternalPayNowService
             'status' => $payment->status,
             'receipt_emailed' => (bool) $payment->receipt_emailed,
             'paid_at' => $payment->paid_at?->toIso8601String(),
+            'error_message' => $errorMessage,
             'external' => true,
         ];
     }

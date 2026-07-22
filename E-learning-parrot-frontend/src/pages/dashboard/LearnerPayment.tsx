@@ -175,6 +175,17 @@ const LearnerPayment = () => {
               });
               break;
             }
+            if (sync.payment?.status === "failed") {
+              toast({
+                variant: "destructive",
+                title: "Payment failed",
+                description:
+                  sync.payment?.error_message ||
+                  sync.message ||
+                  "Mobile Money payment was not completed.",
+              });
+              break;
+            }
           } catch {
             /* keep polling */
           }

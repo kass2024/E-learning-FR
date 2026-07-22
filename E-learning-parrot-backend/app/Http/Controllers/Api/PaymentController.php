@@ -450,29 +450,23 @@ class PaymentController extends Controller
                 ApiListCache::bump('payments');
             }
         } elseif ($failed) {
+            $friendly = $gateway->humanizeError($payloadBody);
             // Only mark failed on explicit failure — keep processing while PIN prompt is pending.
             if ($knownLearner) {
-                $payment = CoursePayment::where('external_reference', $baseRef)->first()
-                    ?? CoursePayment::where('external_reference', $transactionId)->first();
-                if ($payment && !in_array($payment->status, ['paid', 'succeeded', 'completed'], true)) {
-                    $payment->status = 'failed';
-                    $meta = $payment->metadata ?? [];
-                    $meta['webhook'] = $data;
-                    $payment->metadata = $meta;
-                    $payment->save();
-                }
+                $this->mopayPayments->handleWebhookFailure($transactionId, $payloadBody, $friendly);
+                ApiListCache::bump('payments');
             }
             if ($knownExternal) {
-                $ext = \App\Models\ExternalCoursePayment::where('external_reference', $baseRef)->first()
-                    ?? \App\Models\ExternalCoursePayment::where('external_reference', $transactionId)->first();
-                if ($ext && !in_array($ext->status, ['paid', 'succeeded', 'completed'], true)) {
-                    $ext->status = 'failed';
-                    $meta = $ext->metadata ?? [];
-                    $meta['webhook'] = $data;
-                    $ext->metadata = $meta;
-                    $ext->save();
-                }
+                app(\App\Services\ExternalPayNowService::class)
+                    ->handleWebhookFailure($transactionId, $payloadBody, $friendly);
             }
+
+            return response()->json([
+                'status' => 200,
+                'message' => $friendly,
+                'transactionId' => $transactionId,
+                'payment_status' => 'failed',
+            ], 200);
         }
 
         return response()->json([

@@ -38,6 +38,7 @@ const PayNow = () => {
   const [transactionId, setTransactionId] = useState<string | null>(null);
   const [payStatus, setPayStatus] = useState<string | null>(null);
   const [receiptEmailed, setReceiptEmailed] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
     getPublicPayNowCatalog()
@@ -66,12 +67,23 @@ const PayNow = () => {
   useEffect(() => {
     if (!transactionId) return;
     let cancelled = false;
+    let failureToasted = false;
     const tick = async () => {
       try {
         const res = await getPublicPayNowStatus(transactionId);
         if (cancelled) return;
         setPayStatus(res.payment.status);
         setReceiptEmailed(Boolean(res.payment.receipt_emailed));
+        const err = res.payment?.error_message || (res.payment?.status === "failed" ? res.message : null);
+        if (err) setErrorMessage(String(err));
+        if (res.payment?.status === "failed" && err && !failureToasted) {
+          failureToasted = true;
+          toast({
+            variant: "destructive",
+            title: "Payment failed",
+            description: String(err),
+          });
+        }
       } catch {
         /* ignore poll errors */
       }
@@ -82,13 +94,14 @@ const PayNow = () => {
       cancelled = true;
       window.clearInterval(id);
     };
-  }, [transactionId]);
+  }, [transactionId, toast]);
 
   const selectCourse = (id: number) => {
     setSearchParams({ course: String(id) });
     setTransactionId(null);
     setPayStatus(null);
     setReceiptEmailed(false);
+    setErrorMessage(null);
   };
 
   const handleSubmit = async (e: FormEvent) => {
@@ -118,15 +131,21 @@ const PayNow = () => {
       });
       setTransactionId(res.transaction_id || res.payment?.transaction_id || null);
       setPayStatus(res.payment?.status || "processing");
+      setErrorMessage(null);
       toast({
         title: "Check your phone",
         description: res.message || "Approve the Mobile Money prompt.",
       });
     } catch (error: any) {
+      const msg =
+        error?.response?.data?.message ||
+        error?.response?.data?.payment?.error_message ||
+        "Unable to start payment.";
+      setErrorMessage(String(msg));
       toast({
         variant: "destructive",
         title: "Payment error",
-        description: error?.response?.data?.message || "Unable to start payment.",
+        description: String(msg),
       });
     } finally {
       setBusy(false);
@@ -134,6 +153,7 @@ const PayNow = () => {
   };
 
   const paid = payStatus === "paid" || payStatus === "succeeded" || payStatus === "completed";
+  const failed = payStatus === "failed" || payStatus === "cancelled" || payStatus === "canceled";
 
   if (loading) {
     return (
@@ -229,6 +249,17 @@ const PayNow = () => {
                 </div>
               ) : (
                 <form onSubmit={handleSubmit} className="space-y-4">
+                  {failed && errorMessage ? (
+                    <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+                      <strong className="block mb-1">Payment failed</strong>
+                      {errorMessage}
+                    </div>
+                  ) : null}
+                  {!failed && errorMessage ? (
+                    <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+                      {errorMessage}
+                    </div>
+                  ) : null}
                   <div className="space-y-2">
                     <Label htmlFor="amount">Amount to pay ({currency})</Label>
                     <Input

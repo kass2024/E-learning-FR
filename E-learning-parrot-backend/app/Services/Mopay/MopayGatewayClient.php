@@ -298,6 +298,20 @@ class MopayGatewayClient
             $raw = $res->body();
         }
 
+        // Duplicate transaction id → mint a new id and retry once.
+        if ($res->status() >= 400 && $this->isDuplicateTransactionError($body ?? $raw)) {
+            $transactionId = $this->newTransactionId(preg_replace('/_[0-9].*$/', '', $transactionId) ?: 'FRW');
+            if (isset($payload['transactionId'])) {
+                $payload['transactionId'] = $transactionId;
+            }
+            if (isset($payload['transfers'][0]['transactionId'])) {
+                $payload['transfers'][0]['transactionId'] = $transactionId . '_T';
+            }
+            $res = Http::withHeaders($headers)->timeout(60)->post($url, $payload);
+            $body = $res->json();
+            $raw = $res->body();
+        }
+
         // Receiver MSISDN not authorized on merchant → try env receiver, then debit-only.
         $errMsg = is_array($body) && isset($body['message']) && is_string($body['message'])
             ? $body['message']
@@ -354,6 +368,10 @@ class MopayGatewayClient
             'raw' => $raw,
             'auth_mode' => $this->describeAuthMode($authValue),
             'msisdn' => $accountNo,
+            'transaction_id' => (string) ($payload['transactionId'] ?? $transactionId),
+            'error_message' => $res->successful()
+                ? null
+                : $this->humanizeError(is_array($body) ? $body : $raw),
         ];
     }
 
@@ -511,8 +529,9 @@ class MopayGatewayClient
 
         // Only PIN-approved / settled statuses count — never HTTP/statusCode 200 alone.
         $success = $res->successful() && $this->isSettledSuccess(is_array($body) ? $body : null);
+        $failed = $res->successful() && !$success && $this->isSettledFailure(is_array($body) ? $body : null);
 
-        if ($res->successful() && is_array($body) && !$success) {
+        if ($res->successful() && is_array($body) && !$success && !$failed) {
             Log::info('MoPay transaction still unsettled (awaiting PIN or final status)', [
                 'project' => $this->projectSlug(),
                 'transaction_id' => $trxId,
@@ -527,7 +546,146 @@ class MopayGatewayClient
             'response' => $body,
             'raw' => $raw,
             'success' => $success,
+            'failed' => $failed,
+            'error_message' => ($failed || (!$res->successful() && is_array($body)))
+                ? $this->humanizeError($body)
+                : null,
         ];
+    }
+
+    /**
+     * Build a unique MoPay transaction id (avoids "Trx id already exists").
+     */
+    public function newTransactionId(string $prefix): string
+    {
+        $clean = strtoupper(preg_replace('/[^A-Z0-9_]/', '', $prefix) ?: 'FRW');
+        $id = $clean . '_' . time() . '_' . substr((string) microtime(true), -6) . '_' . random_int(100000, 999999);
+
+        return preg_replace('/[^A-Z0-9_]/', '', $id) ?: ('FRW_' . time() . '_' . random_int(100000, 999999));
+    }
+
+    /**
+     * Pull the best raw error/status text from a MoPay body or webhook payload.
+     */
+    public function extractErrorText(mixed $body): string
+    {
+        if (is_string($body) && trim($body) !== '') {
+            return trim($body);
+        }
+        if (!is_array($body)) {
+            return '';
+        }
+
+        $keys = [
+            'message', 'error', 'error_message', 'errorMessage', 'reason', 'statusMessage',
+            'status_message', 'description', 'detail', 'details', 'failureReason', 'failure_reason',
+        ];
+        foreach ($keys as $key) {
+            if (!empty($body[$key]) && (is_string($body[$key]) || is_numeric($body[$key]))) {
+                $text = trim((string) $body[$key]);
+                if ($text !== '' && !ctype_digit($text)) {
+                    return $text;
+                }
+            }
+        }
+        if (isset($body['data']) && is_array($body['data'])) {
+            $nested = $this->extractErrorText($body['data']);
+            if ($nested !== '') {
+                return $nested;
+            }
+        }
+
+        return '';
+    }
+
+    /**
+     * Map MoPay/MoMo gateway errors to clear payer-facing messages.
+     */
+    public function humanizeError(mixed $bodyOrText, string $fallback = 'Mobile Money payment failed. Please try again.'): string
+    {
+        $raw = is_string($bodyOrText) ? trim($bodyOrText) : $this->extractErrorText($bodyOrText);
+        $lower = strtolower($raw);
+
+        if ($raw === '') {
+            return $fallback;
+        }
+
+        $map = [
+            ['insufficient', 'Insufficient balance on the Mobile Money account.'],
+            ['not enough', 'Insufficient balance on the Mobile Money account.'],
+            ['not_enough', 'Insufficient balance on the Mobile Money account.'],
+            ['low balance', 'Insufficient balance on the Mobile Money account.'],
+            ['nofund', 'Insufficient balance on the Mobile Money account.'],
+            ['no fund', 'Insufficient balance on the Mobile Money account.'],
+            ['already exists', 'A previous payment request is still open. Wait a moment, then try again.'],
+            ['trx id', 'A previous payment request is still open. Wait a moment, then try again.'],
+            ['transaction id already', 'A previous payment request is still open. Wait a moment, then try again.'],
+            ['wrong pin', 'Incorrect Mobile Money PIN. Please try again.'],
+            ['invalid pin', 'Incorrect Mobile Money PIN. Please try again.'],
+            ['incorrect pin', 'Incorrect Mobile Money PIN. Please try again.'],
+            ['pin', null], // handled carefully below
+            ['timeout', 'Payment timed out before approval. Please try again.'],
+            ['timed out', 'Payment timed out before approval. Please try again.'],
+            ['expired', 'Payment request expired. Please try again.'],
+            ['cancel', 'Payment was cancelled on the phone.'],
+            ['reject', 'Payment was rejected on the phone.'],
+            ['declined', 'Payment was declined.'],
+            ['target_authorization', 'The receive Mobile Money number is not authorized on MoPay. Update Settings → Payments.'],
+            ['target authorization', 'The receive Mobile Money number is not authorized on MoPay. Update Settings → Payments.'],
+            ['not authorized', 'This Mobile Money number is not authorized for this payment.'],
+            ['authentication', 'Mobile Money authentication failed. Please try again shortly.'],
+            ['ip address', 'Payment gateway IP authorization failed. Contact support.'],
+            ['subscriber', 'Mobile Money subscriber issue. Check the phone number and try again.'],
+            ['msisdn', 'Invalid Mobile Money number. Check and try again.'],
+            ['invalid phone', 'Invalid Mobile Money number. Check and try again.'],
+            ['invalid number', 'Invalid Mobile Money number. Check and try again.'],
+            ['user limit', 'Too many payment attempts. Wait a few minutes and try again.'],
+            ['limit exceed', 'Mobile Money limit exceeded for this account.'],
+            ['daily limit', 'Daily Mobile Money limit reached. Try a smaller amount or wait.'],
+            ['service unavailable', 'Mobile Money service is temporarily unavailable. Try again shortly.'],
+            ['internal', 'Mobile Money gateway error. Please try again shortly.'],
+        ];
+
+        foreach ($map as [$needle, $friendly]) {
+            if ($friendly === null) {
+                continue;
+            }
+            if ($needle !== '' && str_contains($lower, $needle)) {
+                return $friendly;
+            }
+        }
+
+        // PIN failures without matching "wrong/invalid" above (avoid matching unrelated words).
+        if (preg_match('/\bpin\b/i', $raw) && preg_match('/\b(wrong|invalid|incorrect|fail|error)\b/i', $raw)) {
+            return 'Incorrect Mobile Money PIN. Please try again.';
+        }
+
+        // Keep readable gateway text when it already looks user-facing.
+        if (strlen($raw) <= 180 && !str_contains($lower, '{') && !str_starts_with($lower, 'curl ')) {
+            // Prefer sentence case without dumping raw technical codes alone.
+            if (preg_match('/^[A-Z0-9_]{6,}$/', $raw)) {
+                return $fallback;
+            }
+
+            return $raw;
+        }
+
+        return $fallback;
+    }
+
+    /**
+     * True when gateway text indicates a duplicate transaction id (safe to retry with a new id).
+     */
+    public function isDuplicateTransactionError(mixed $bodyOrText): bool
+    {
+        $raw = strtolower(is_string($bodyOrText) ? $bodyOrText : $this->extractErrorText($bodyOrText));
+
+        return $raw !== '' && (
+            str_contains($raw, 'already exists')
+            || str_contains($raw, 'trx id already')
+            || str_contains($raw, 'transaction id already')
+            || str_contains($raw, 'duplicate')
+        );
     }
 
     /**
