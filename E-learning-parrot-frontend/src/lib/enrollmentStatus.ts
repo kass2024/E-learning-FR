@@ -65,10 +65,15 @@ export function canViewCourseGuide(status?: string | null): boolean {
   );
 }
 
-export function enrollmentBadgeLabel(status?: string | null): string {
+export function enrollmentBadgeLabel(status?: string | null, remaining?: number | null): string {
   const s = normalizeEnrollmentStatus(status);
   if (s === "paid") return "Paid";
-  if (s === "partial_paid") return "Partial paid";
+  if (s === "partial_paid") {
+    if (remaining != null && remaining > 0) {
+      return `Partial · ${Number(remaining).toLocaleString()} due`;
+    }
+    return "Partial paid";
+  }
   if (s === "completed") return "Completed";
   if (s === "approved") return "Active — payment due";
   if (s === "rejected") return "Rejected";
@@ -107,6 +112,39 @@ export function buildEnrollmentStatusMap(
     statuses[id] = normalizeEnrollmentStatus(row?.status) || "enrolled";
   }
   return statuses;
+}
+
+/** Build course_id → amount_remaining map from enrollment API rows. */
+export function buildEnrollmentRemainingMap(
+  enrollments:
+    | Array<{ course_id?: number | string | null; amount_remaining?: number | string | null }>
+    | null
+    | undefined
+): Record<number, number> {
+  const remaining: Record<number, number> = {};
+  for (const row of enrollments ?? []) {
+    const id = Number(row?.course_id);
+    if (!id || Number.isNaN(id)) continue;
+    const value = Number(row?.amount_remaining ?? 0);
+    if (Number.isFinite(value) && value >= 0) {
+      remaining[id] = value;
+    }
+  }
+  return remaining;
+}
+
+export function getEnrollmentRemainingForCourse(
+  remaining: Record<number | string, number | undefined>,
+  courseId: number | string | null | undefined
+): number | undefined {
+  if (courseId == null || courseId === "") return undefined;
+  const id = Number(courseId);
+  if (!Number.isNaN(id)) {
+    const value = remaining[id] ?? remaining[String(id)];
+    return value == null ? undefined : Number(value);
+  }
+  const value = remaining[courseId];
+  return value == null ? undefined : Number(value);
 }
 
 export function getEnrollmentStatusForCourse(

@@ -7,6 +7,7 @@ import {
   canPayForEnrollment,
   enrollmentBadgeLabel,
   enrollmentPaymentStatusText,
+  getEnrollmentRemainingForCourse,
   getEnrollmentStatusForCourse,
   hasCourseAccess,
   isEnrollmentPaid,
@@ -19,6 +20,7 @@ import type { UpafaCatalogCourse } from "./LearnerUpafaCourseCatalog";
 type Props = {
   courses: UpafaCatalogCourse[];
   courseStatuses: Record<number, string>;
+  courseRemaining?: Record<number, number>;
   busyCourseId?: number | null;
   onApply?: (courseId: number, studyShiftIds: number[]) => void;
   onOpenCourse: (courseId: number) => void;
@@ -55,14 +57,15 @@ function sortCourses(courses: UpafaCatalogCourse[], statuses: Record<number, str
 type CourseListItemProps = {
   course: UpafaCatalogCourse;
   status: string | undefined;
+  remaining?: number;
   selected: boolean;
   onSelect: () => void;
 };
 
-function CourseListItem({ course, status, selected, onSelect }: CourseListItemProps) {
+function CourseListItem({ course, status, remaining, selected, onSelect }: CourseListItemProps) {
   const code = displayCode(course);
   const hasStatus = Boolean(status);
-  const badge = hasStatus ? enrollmentBadgeLabel(status) : "Available";
+  const badge = hasStatus ? enrollmentBadgeLabel(status, remaining) : "Available";
 
   return (
     <button
@@ -101,6 +104,7 @@ function CourseListItem({ course, status, selected, onSelect }: CourseListItemPr
 function CourseDetailPanel({
   course,
   status,
+  remaining,
   busyCourseId,
   onApply,
   onOpenCourse,
@@ -108,6 +112,7 @@ function CourseDetailPanel({
 }: {
   course: UpafaCatalogCourse;
   status: string | undefined;
+  remaining?: number;
   busyCourseId: number | null;
   onApply?: (courseId: number, studyShiftIds: number[]) => void;
   onOpenCourse: (courseId: number) => void;
@@ -116,7 +121,7 @@ function CourseDetailPanel({
   const code = displayCode(course);
   const hasStatus = Boolean(status);
   const isBusy = busyCourseId === course.id;
-  const paymentLabel = hasStatus ? enrollmentPaymentStatusText(status) : "Not applied";
+  const paymentLabel = hasStatus ? enrollmentPaymentStatusText(status, remaining) : "Not applied";
   const canOpen = hasCourseAccess(status) || isPendingEnrollmentApproval(status);
   const canPay = canPayForEnrollment(status) && !isEnrollmentPaid(status);
   const rejected = isEnrollmentRejected(status);
@@ -142,7 +147,7 @@ function CourseDetailPanel({
           <h2 className="text-lg font-semibold text-slate-900">{course.title ?? "Untitled course"}</h2>
         </div>
         {hasStatus && (
-          <p className="text-xs text-muted-foreground mt-2">{enrollmentBadgeLabel(status)}</p>
+          <p className="text-xs text-muted-foreground mt-2">{enrollmentBadgeLabel(status, remaining)}</p>
         )}
       </div>
 
@@ -245,6 +250,7 @@ function CourseDetailPanel({
 export function LearnerMyCoursesSplitLayout({
   courses,
   courseStatuses,
+  courseRemaining = {},
   busyCourseId = null,
   onApply,
   onOpenCourse,
@@ -299,6 +305,7 @@ export function LearnerMyCoursesSplitLayout({
         key={course.id}
         course={course}
         status={getEnrollmentStatusForCourse(courseStatuses, course.id)}
+        remaining={getEnrollmentRemainingForCourse(courseRemaining, course.id)}
         selected={course.id === selectedId}
         onSelect={() => setSelectedId(course.id)}
       />
@@ -338,6 +345,7 @@ export function LearnerMyCoursesSplitLayout({
           <CourseDetailPanel
             course={selected}
             status={getEnrollmentStatusForCourse(courseStatuses, selected.id)}
+            remaining={getEnrollmentRemainingForCourse(courseRemaining, selected.id)}
             busyCourseId={busyCourseId}
             onApply={onApply}
             onOpenCourse={onOpenCourse}

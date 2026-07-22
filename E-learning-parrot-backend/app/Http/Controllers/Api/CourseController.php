@@ -890,6 +890,9 @@ class CourseController extends Controller
     {
         $course ??= $enrollment->course;
         $status = (string) ($enrollment->status ?? 'enrolled');
+        $balance = $course
+            ? app(\App\Services\MopayPaymentService::class)->balanceFor($course, (int) $enrollment->student_id)
+            : ['course_price' => 0, 'amount_paid' => 0, 'amount_remaining' => 0, 'currency' => 'RWF'];
 
         return [
             'enrollment_id' => (int) $enrollment->id,
@@ -899,6 +902,9 @@ class CourseController extends Controller
             'status' => $status,
             'payment_paid' => EnrollmentStatusHelper::isPaid($status),
             'has_access' => EnrollmentStatusHelper::hasCourseAccess($status),
+            'amount_paid' => (int) ($balance['amount_paid'] ?? 0),
+            'amount_remaining' => (int) ($balance['amount_remaining'] ?? 0),
+            'currency' => (string) ($balance['currency'] ?? 'RWF'),
             'level' => $enrollment->level,
             'study_shifts' => $this->formatStudyShiftsForApi($enrollment->studyShifts),
         ];

@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 import { getStudentCourseEnrollments, getCourses } from "@/api/axios";
 import {
+  buildEnrollmentRemainingMap,
   buildEnrollmentStatusMap,
   getEnrollmentStatusForCourse,
 } from "@/lib/enrollmentStatus";
@@ -17,6 +18,7 @@ const LearnerBrowseCourses = () => {
   const [courses, setCourses] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [courseStatuses, setCourseStatuses] = useState<Record<number, string>>({});
+  const [courseRemaining, setCourseRemaining] = useState<Record<number, number>>({});
 
   useEffect(() => {
     const load = async () => {
@@ -34,6 +36,7 @@ const LearnerBrowseCourses = () => {
             const res = await getStudentCourseEnrollments(studentIdNum);
             const byCourse = buildEnrollmentStatusMap(res.enrollments);
             setCourseStatuses(byCourse);
+            setCourseRemaining(buildEnrollmentRemainingMap(res.enrollments));
 
             filtered = list.filter((c) => {
               if (!c?.id) return false;
@@ -97,6 +100,7 @@ const LearnerBrowseCourses = () => {
           <LearnerUpafaCourseCatalog
             courses={courses}
             courseStatuses={courseStatuses}
+            courseRemaining={courseRemaining}
             onOpenCourse={(id) => openCourseMaterials(navigate, id, "overview")}
             onPay={goToPayment}
             defaultOpenIds={defaultOpenIds}

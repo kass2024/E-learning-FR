@@ -12,6 +12,7 @@ import {
   canPayForEnrollment,
   enrollmentBadgeLabel,
   enrollmentPaymentStatusText,
+  getEnrollmentRemainingForCourse,
   getEnrollmentStatusForCourse,
   hasCourseAccess,
   isEnrollmentPaid,
@@ -32,6 +33,7 @@ export type UpafaCatalogCourse = {
 type Props = {
   courses: UpafaCatalogCourse[];
   courseStatuses: Record<number, string>;
+  courseRemaining?: Record<number, number>;
   busyCourseId?: number | null;
   onApply?: (courseId: number) => void;
   onOpenCourse: (courseId: number) => void;
@@ -72,6 +74,7 @@ function sortCourses(courses: UpafaCatalogCourse[], statuses: Record<number, str
 export function LearnerUpafaCourseCatalog({
   courses,
   courseStatuses,
+  courseRemaining = {},
   busyCourseId = null,
   onApply,
   onOpenCourse,
@@ -135,11 +138,12 @@ export function LearnerUpafaCourseCatalog({
       >
         {filtered.map((course) => {
           const status = getEnrollmentStatusForCourse(courseStatuses, course.id);
+          const remaining = getEnrollmentRemainingForCourse(courseRemaining, course.id);
           const hasStatus = Boolean(status);
           const code = displayCode(course);
           const isBusy = busyCourseId === course.id;
-          const badge = hasStatus ? enrollmentBadgeLabel(status) : "Available";
-          const paymentLabel = hasStatus ? enrollmentPaymentStatusText(status) : "Not applied";
+          const badge = hasStatus ? enrollmentBadgeLabel(status, remaining) : "Available";
+          const paymentLabel = hasStatus ? enrollmentPaymentStatusText(status, remaining) : "Not applied";
           const canOpen = hasCourseAccess(status) || isPendingEnrollmentApproval(status);
           const canPay = canPayForEnrollment(status) && !isEnrollmentPaid(status);
           const rejected = isEnrollmentRejected(status);

@@ -13,15 +13,11 @@ import { fetchDashboardCached } from "@/lib/dashboardCache";
 import { getStudentId } from "@/lib/dashboardUser";
 
 import {
-
+  buildEnrollmentRemainingMap,
   buildEnrollmentStatusMap,
-
   getEnrollmentStatusForCourse,
-
   hasCourseAccess,
-
   isPendingEnrollmentApproval,
-
 } from "@/lib/enrollmentStatus";
 
 import { openCourseMaterials } from "@/lib/learnerNavigation";
@@ -45,7 +41,7 @@ const LearnerMyCourses = () => {
   const [loading, setLoading] = useState(false);
 
   const [courseStatuses, setCourseStatuses] = useState<Record<number, string>>({});
-
+  const [courseRemaining, setCourseRemaining] = useState<Record<number, number>>({});
   const [busyCourseId, setBusyCourseId] = useState<number | null>(null);
 
   const [tab, setTab] = useState<"all" | "enrolled" | "available">("all");
@@ -73,6 +69,7 @@ const LearnerMyCourses = () => {
         const res = await getStudentCourseEnrollments(studentIdNum);
 
         setCourseStatuses(buildEnrollmentStatusMap(res.enrollments));
+        setCourseRemaining(buildEnrollmentRemainingMap(res.enrollments));
 
       }
 
@@ -233,6 +230,8 @@ const LearnerMyCourses = () => {
   const layoutProps = {
 
     courseStatuses,
+
+    courseRemaining,
 
     busyCourseId,
 
