@@ -19,6 +19,7 @@ use App\Http\Controllers\Api\AvailableScheduleController;
 use App\Http\Controllers\Api\StudyShiftController;
 use App\Http\Controllers\Api\LiveZoomCohortController;
 use App\Http\Controllers\Api\PaymentController;
+use App\Http\Controllers\Api\ExternalPayNowController;
 use App\Http\Controllers\Api\PaymentSettingsController;
 use App\Http\Controllers\Api\AdminPayoutController;
 use App\Http\Controllers\Api\AdminReportsController;
@@ -104,6 +105,11 @@ Route::prefix('admin')->group(function () {
     Route::put('site-settings/star-promo-banner', [StarPromoBannerController::class, 'update']);
     Route::get('site-settings/payment-receiver', [PaymentSettingsController::class, 'show']);
     Route::put('site-settings/payment-receiver', [PaymentSettingsController::class, 'update']);
+
+    // Public Pay Now (guest MoMo — not linked to learner enrollments)
+    Route::get('public/pay-now/courses', [ExternalPayNowController::class, 'courses']);
+    Route::post('public/pay-now/request', [ExternalPayNowController::class, 'request']);
+    Route::get('public/pay-now/status/{reference}', [ExternalPayNowController::class, 'status']);
 
     // Study shifts (learner registration)
     Route::get('study-shifts', [StudyShiftController::class, 'index']);

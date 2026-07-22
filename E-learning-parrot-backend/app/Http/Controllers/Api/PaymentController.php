@@ -371,12 +371,17 @@ class PaymentController extends Controller
             return response()->json(['status' => 200, 'message' => 'Webhook received (no transaction id)'], 200);
         }
 
-        $known = CoursePayment::where('external_reference', $transactionId)
-            ->orWhere('external_reference', preg_replace('/_T$/', '', $transactionId))
+        $baseRef = preg_replace('/_T$/', '', $transactionId) ?: $transactionId;
+
+        $knownLearner = CoursePayment::where('external_reference', $transactionId)
+            ->orWhere('external_reference', $baseRef)
+            ->exists();
+        $knownExternal = \App\Models\ExternalCoursePayment::where('external_reference', $transactionId)
+            ->orWhere('external_reference', $baseRef)
             ->exists();
 
         // MoPay validates the callback URL by expecting 404 for unknown transactions.
-        if (!$known) {
+        if (!$knownLearner && !$knownExternal) {
             return response()->json([
                 'status' => 404,
                 'message' => 'Transaction not found',
@@ -388,17 +393,36 @@ class PaymentController extends Controller
             || (isset($data['statusCode']) && (int) $data['statusCode'] === 200);
 
         if ($success) {
-            $this->mopayPayments->handleWebhookSuccess($transactionId, is_array($data) ? $data : []);
-            ApiListCache::bump('payments');
+            if ($knownExternal) {
+                app(\App\Services\ExternalPayNowService::class)
+                    ->handleWebhookSuccess($transactionId, is_array($data) ? $data : []);
+            }
+            if ($knownLearner) {
+                $this->mopayPayments->handleWebhookSuccess($transactionId, is_array($data) ? $data : []);
+                ApiListCache::bump('payments');
+            }
         } else {
-            $payment = CoursePayment::where('external_reference', preg_replace('/_T$/', '', $transactionId))->first()
-                ?? CoursePayment::where('external_reference', $transactionId)->first();
-            if ($payment && !in_array($payment->status, ['paid', 'succeeded', 'completed'], true)) {
-                $payment->status = 'failed';
-                $meta = $payment->metadata ?? [];
-                $meta['webhook'] = $data;
-                $payment->metadata = $meta;
-                $payment->save();
+            if ($knownLearner) {
+                $payment = CoursePayment::where('external_reference', $baseRef)->first()
+                    ?? CoursePayment::where('external_reference', $transactionId)->first();
+                if ($payment && !in_array($payment->status, ['paid', 'succeeded', 'completed'], true)) {
+                    $payment->status = 'failed';
+                    $meta = $payment->metadata ?? [];
+                    $meta['webhook'] = $data;
+                    $payment->metadata = $meta;
+                    $payment->save();
+                }
+            }
+            if ($knownExternal) {
+                $ext = \App\Models\ExternalCoursePayment::where('external_reference', $baseRef)->first()
+                    ?? \App\Models\ExternalCoursePayment::where('external_reference', $transactionId)->first();
+                if ($ext && !in_array($ext->status, ['paid', 'succeeded', 'completed'], true)) {
+                    $ext->status = 'failed';
+                    $meta = $ext->metadata ?? [];
+                    $meta['webhook'] = $data;
+                    $ext->metadata = $meta;
+                    $ext->save();
+                }
             }
         }
 

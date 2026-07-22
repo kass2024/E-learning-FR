@@ -17,13 +17,14 @@ const Navbar = () => {
   const navLinks = [
     { to: "/", labelEn: "Home", labelFr: "Accueil" },
     { to: "/courses", labelEn: "Programs", labelFr: "Programmes" },
+    { to: "/pay-now", labelEn: "Pay Now", labelFr: "Payer" },
     { to: "/about", labelEn: "About", labelFr: "À propos" },
   ];
   const meetingRegistrationLabel = "Book meeting with us";
   const navLinkClass =
-    "text-sm font-medium transition-colors text-slate-600 hover:text-[#1F8A4C]";
+    "text-sm font-medium transition-colors text-slate-600 hover:text-[#0070D0]";
   const mobileNavLinkClass =
-    "text-slate-700 hover:text-[#1F8A4C] hover:bg-slate-50 transition-colors font-medium py-2.5 px-2 rounded-md";
+    "text-slate-700 hover:text-[#0070D0] hover:bg-[#E8F4FC] transition-colors font-medium py-2.5 px-2 rounded-md";
 
   useEffect(() => {
     const handleScroll = () => {
@@ -79,7 +80,7 @@ const Navbar = () => {
 
       <nav className="border-b border-slate-200 bg-white">
         <div
-          className="absolute top-0 left-0 h-0.5 bg-[#1F8A4C] transition-[width] duration-150 z-10"
+          className="absolute top-0 left-0 h-0.5 bg-[#FCC400] transition-[width] duration-150 z-10"
           style={{ width: `${scrollProgress}%` }}
         />
 
@@ -87,7 +88,7 @@ const Navbar = () => {
           <div className="flex items-center justify-between gap-3 h-16 md:h-[72px]">
             <NavLink
               to="/"
-              className="flex items-center gap-2.5 shrink-0 text-[#1F8A4C] hover:opacity-90 transition-opacity"
+              className="flex items-center gap-2.5 shrink-0 text-[#0070D0] hover:opacity-90 transition-opacity"
             >
               <img
                 src="/logo.png"
@@ -95,10 +96,10 @@ const Navbar = () => {
                 className="w-10 h-10 md:w-11 md:h-11 object-contain rounded-full border border-slate-200 shadow-sm"
               />
               <div className="hidden sm:flex flex-col items-start leading-tight">
-                <span className="text-sm md:text-base font-bold text-[#1F8A4C]">
+                <span className="text-sm md:text-base font-bold text-[#0070D0]">
                   {HUB.name}
                 </span>
-                <span className="text-[10px] md:text-xs text-[#1F8A4C] font-medium">
+                <span className="text-[10px] md:text-xs text-[#0070D0] font-medium">
                   {HUB.company}
                 </span>
               </div>
@@ -111,11 +112,11 @@ const Navbar = () => {
                   placeholder="Search courses, exams, languages…"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="h-10 rounded-md border-slate-200 pr-10 focus-visible:ring-[#1F8A4C]/20 focus-visible:border-[#1F8A4C] bg-white"
+                  className="h-10 rounded-md border-slate-200 pr-10 focus-visible:ring-[#0070D0]/20 focus-visible:border-[#0070D0] bg-white"
                 />
                 <button
                   type="submit"
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-[#1F8A4C] hover:text-[#1F8A4C] transition-colors"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-[#0070D0] hover:text-[#0070D0] transition-colors"
                   aria-label="Search"
                 >
                   <Search className="h-4 w-4" />
@@ -130,7 +131,7 @@ const Navbar = () => {
                   to={link.to}
                   end={link.to === "/"}
                   className={navLinkClass}
-                  activeClassName="text-[#1F8A4C] font-semibold"
+                  activeClassName="text-[#0070D0] font-semibold"
                 >
                   {link.labelEn}
                 </NavLink>
@@ -139,7 +140,7 @@ const Navbar = () => {
               <NavLink
                 to="/meeting-registration"
                 className={navLinkClass}
-                activeClassName="text-[#1F8A4C] font-semibold"
+                activeClassName="text-[#0070D0] font-semibold"
               >
                 {meetingRegistrationLabel}
               </NavLink>
@@ -150,7 +151,7 @@ const Navbar = () => {
                 <Button
                   size="sm"
                   variant="outline"
-                  className="rounded-md border-[#1F8A4C] text-[#1F8A4C] hover:bg-[#1F8A4C]/5 px-5 font-semibold h-10 bg-white"
+                  className="rounded-md border-[#0070D0] text-[#0070D0] hover:bg-[#E8F4FC] px-5 font-semibold h-10 bg-white"
                 >
                   Log In
                 </Button>
@@ -158,7 +159,7 @@ const Navbar = () => {
               <NavLink to="/signup">
                 <Button
                   size="sm"
-                  className="rounded-md bg-[#1F8A4C] hover:bg-[#166B3A] text-white px-5 font-semibold h-10"
+                  className="rounded-md bg-[#FCC400] hover:bg-[#E6B000] text-[#0B0B0B] px-5 font-semibold h-10"
                 >
                   Get Started
                 </Button>
@@ -166,7 +167,7 @@ const Navbar = () => {
             </div>
 
             <button
-              className="lg:hidden text-[#1F8A4C] p-1"
+              className="lg:hidden text-[#0070D0] p-1"
               onClick={() => setIsMenuOpen((prev) => !prev)}
               aria-label="Toggle menu"
             >
@@ -187,7 +188,7 @@ const Navbar = () => {
                   />
                   <button
                     type="submit"
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[#1F8A4C]"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[#0070D0]"
                     aria-label="Search"
                   >
                     <Search className="h-4 w-4" />
@@ -202,7 +203,7 @@ const Navbar = () => {
                     to={link.to}
                     end={link.to === "/"}
                     className={mobileNavLinkClass}
-                    activeClassName="text-[#1F8A4C] bg-[#1F8A4C]/5"
+                    activeClassName="text-[#0070D0] bg-[#0070D0]/5"
                     onClick={() => setIsMenuOpen(false)}
                   >
                     {link.labelEn}
@@ -212,7 +213,7 @@ const Navbar = () => {
                 <NavLink
                   to="/meeting-registration"
                   className={mobileNavLinkClass}
-                  activeClassName="text-[#1F8A4C] bg-[#1F8A4C]/5"
+                  activeClassName="text-[#0070D0] bg-[#0070D0]/5"
                   onClick={() => setIsMenuOpen(false)}
                 >
                   {meetingRegistrationLabel}
@@ -223,7 +224,7 @@ const Navbar = () => {
                     <Button
                       size="sm"
                       variant="outline"
-                      className="w-full rounded-md border-[#1F8A4C] text-[#1F8A4C] font-semibold h-11 bg-white"
+                      className="w-full rounded-md border-[#0070D0] text-[#0070D0] font-semibold h-11 bg-white"
                     >
                       Log In
                     </Button>
@@ -231,7 +232,7 @@ const Navbar = () => {
                   <NavLink to="/signup" onClick={() => setIsMenuOpen(false)}>
                     <Button
                       size="sm"
-                      className="w-full rounded-md bg-[#1F8A4C] hover:bg-[#166B3A] text-white font-semibold h-11"
+                      className="w-full rounded-md bg-[#FCC400] hover:bg-[#E6B000] text-[#0B0B0B] font-semibold h-11"
                     >
                       Get Started
                     </Button>

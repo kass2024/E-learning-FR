@@ -24,6 +24,7 @@ const CertificateVerify = lazyWithRetry(() => import("./pages/CertificateVerify"
 const Dashboard = lazyWithRetry(() => import("./pages/Dashboard"));
 const PublicCohortJoin = lazyWithRetry(() => import("./pages/PublicCohortJoin"));
 const MeetingRegistration = lazyWithRetry(() => import("./pages/MeetingRegistration"));
+const PayNow = lazyWithRetry(() => import("./pages/PayNow"));
 const InstitutionSignup = lazyWithRetry(() => import("./pages/InstitutionSignup"));
 const InstitutionSignupSuccess = lazyWithRetry(() => import("./pages/InstitutionSignupSuccess"));
 /** Meeting rooms — lazy so Zoom/Daily SDKs are not downloaded on login/home. */
@@ -59,6 +60,7 @@ const App = () => (
               <Route path="/" element={<Index />} />
               <Route path="/courses" element={<Courses />} />
               <Route path="/about" element={<About />} />
+              <Route path="/pay-now" element={<PayNow />} />
               <Route path="/meeting-registration" element={<MeetingRegistration />} />
               <Route path="/live-cohort/:cohortId/join" element={<PublicCohortJoin />} />
               <Route path="/live-cohort/:cohortId/room" element={<LiveCohortMeetingRoom />} />

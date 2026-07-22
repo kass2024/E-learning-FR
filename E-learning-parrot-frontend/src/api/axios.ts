@@ -2387,6 +2387,63 @@ export const requestMomoPayment = async (
   };
 };
 
+export type PublicPayNowCourse = {
+  id: number;
+  title: string;
+  price: number;
+  currency: string;
+  duration?: string | null;
+  description?: string | null;
+};
+
+export const getPublicPayNowCatalog = async () => {
+  const response = await api.get(`/public/pay-now/courses`);
+  return response.data as {
+    courses: PublicPayNowCourse[];
+    receiver_phone?: string | null;
+    allows_partial_amount?: boolean;
+    currency?: string;
+    configured?: boolean;
+  };
+};
+
+export const requestPublicPayNow = async (payload: {
+  course_id: number;
+  amount: number;
+  phone: string;
+  email: string;
+  payer_name?: string;
+  mno?: "mtn" | "airtel";
+}) => {
+  const response = await api.post(`/public/pay-now/request`, payload);
+  return response.data as {
+    ok: boolean;
+    message: string;
+    transaction_id?: string;
+    payment?: {
+      transaction_id: string;
+      status: string;
+      amount: number;
+      course_title?: string;
+      receipt_emailed?: boolean;
+    };
+  };
+};
+
+export const getPublicPayNowStatus = async (reference: string) => {
+  const response = await api.get(`/public/pay-now/status/${encodeURIComponent(reference)}`);
+  return response.data as {
+    payment: {
+      transaction_id: string;
+      status: string;
+      amount: number;
+      course_title?: string;
+      receipt_emailed?: boolean;
+      payer_email?: string;
+    };
+  };
+};
+
 export const applyCoursePromoCode = async (courseId: number, studentId: number, code: string) => {
   const response = await api.post(`/payments/promo/apply`, {
     course_id: courseId,
