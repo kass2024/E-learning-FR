@@ -55,19 +55,13 @@ const LearnerPayment = () => {
   const [momoConfigured, setMomoConfigured] = useState(false);
   const [tab, setTab] = useState<PayTab>("momo");
   const [phone, setPhone] = useState("");
+  const [payAmount, setPayAmount] = useState("");
+  const [amountPaid, setAmountPaid] = useState(0);
+  const [amountRemaining, setAmountRemaining] = useState(0);
   const [promoCode, setPromoCode] = useState("");
   const [proofNote, setProofNote] = useState("");
   const [proofFile, setProofFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
-
-  useEffect(() => {
-    getPaymentConfig()
-      .then((cfg) => {
-        setMomoConfigured(Boolean(cfg.configured));
-        setGuidelines(cfg.guidelines ?? null);
-      })
-      .catch(() => setMomoConfigured(false));
-  }, []);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -92,6 +86,20 @@ const LearnerPayment = () => {
 
     setHasCourseContext(true);
 
+    const loadConfig = getPaymentConfig({ courseId: courseIdNum, studentId: studentIdNum })
+      .then((cfg) => {
+        setMomoConfigured(Boolean(cfg.configured));
+        setGuidelines(cfg.guidelines ?? null);
+        const remaining = Number(cfg.balance?.amount_remaining ?? 0);
+        const paid = Number(cfg.balance?.amount_paid ?? 0);
+        const price = Number(cfg.balance?.course_price ?? 0);
+        setAmountPaid(paid);
+        if (price > 0) setCoursePrice(price);
+        setAmountRemaining(remaining > 0 ? remaining : price);
+        setPayAmount(String(remaining > 0 ? remaining : price || ""));
+      })
+      .catch(() => setMomoConfigured(false));
+
     const loadEnrollment = getStudentCourseEnrollments(studentIdNum).then((res) => {
       const match = (res.enrollments || []).find((e) => Number(e.course_id) === courseIdNum);
       setEnrollmentStatus(match?.status ?? null);
@@ -103,7 +111,10 @@ const LearnerPayment = () => {
         const match = list.find((c: any) => Number(c.id) === courseIdNum) ?? null;
         if (match) {
           setSelectedCourse(match);
-          setCoursePrice(extractPrice(match));
+          const price = extractPrice(match);
+          setCoursePrice((prev) => (prev > 0 ? prev : price));
+          setPayAmount((prev) => (prev ? prev : String(price || "")));
+          setAmountRemaining((prev) => (prev > 0 ? prev : price));
         }
       })
       .catch(() => {
@@ -114,7 +125,7 @@ const LearnerPayment = () => {
         });
       });
 
-    Promise.all([loadCourse, loadEnrollment]).finally(() => setIsLoading(false));
+    Promise.all([loadCourse, loadEnrollment, loadConfig]).finally(() => setIsLoading(false));
   }, [toast]);
 
   const courseId = Number(localStorage.getItem("parrot_selected_course_id") || 0);
@@ -122,13 +133,22 @@ const LearnerPayment = () => {
 
   const handleMomo = async () => {
     if (!courseId || !studentId) return;
+    const amountNum = Math.floor(Number(payAmount));
+    if (!Number.isFinite(amountNum) || amountNum < 1) {
+      toast({ variant: "destructive", title: "Enter an amount", description: "Pay any amount of at least 1 RWF." });
+      return;
+    }
     try {
       setBusy(true);
-      const res = await requestMomoPayment(courseId, studentId, phone);
+      const res = await requestMomoPayment(courseId, studentId, phone, "mtn", amountNum);
       toast({
         title: "Check your phone",
         description: res.message || "Approve the Mobile Money prompt to finish payment.",
       });
+      if (typeof res.amount_remaining === "number") {
+        setAmountRemaining(Math.max(0, res.amount_remaining));
+        setPayAmount(String(Math.max(0, res.amount_remaining)));
+      }
     } catch (error: any) {
       toast({
         variant: "destructive",
@@ -182,12 +202,19 @@ const LearnerPayment = () => {
 
   const courseTitle =
     selectedCourse?.title || selectedCourse?.course_name || selectedCourse?.name || "Selected course";
+  const displayRemaining = amountRemaining > 0 ? amountRemaining : coursePrice;
   const formattedPrice = coursePrice.toLocaleString("en-US", {
+    maximumFractionDigits: 0,
+  });
+  const formattedRemaining = displayRemaining.toLocaleString("en-US", {
+    maximumFractionDigits: 0,
+  });
+  const formattedPaid = amountPaid.toLocaleString("en-US", {
     maximumFractionDigits: 0,
   });
 
   const canPay = canPayForEnrollment(enrollmentStatus);
-  const alreadyPaid = isEnrollmentPaid(enrollmentStatus);
+  const alreadyPaid = isEnrollmentPaid(enrollmentStatus) || (coursePrice > 0 && amountRemaining <= 0 && amountPaid >= coursePrice);
   const pendingApproval = isPendingEnrollmentApproval(enrollmentStatus);
   const approvalBlocked = hasCourseContext && !canPay && !alreadyPaid;
 
@@ -258,9 +285,22 @@ const LearnerPayment = () => {
               <CardHeader>
                 <CardTitle className="text-xl">{courseTitle}</CardTitle>
                 <CardDescription>
-                  Amount due: <span className="font-semibold text-foreground">{formattedPrice} RWF</span>
+                  Course total: <span className="font-semibold text-foreground">{formattedPrice} RWF</span>
+                  {amountPaid > 0 ? (
+                    <>
+                      {" "}
+                      · Paid: <span className="font-semibold text-foreground">{formattedPaid} RWF</span>
+                      {" "}
+                      · Remaining: <span className="font-semibold text-foreground">{formattedRemaining} RWF</span>
+                    </>
+                  ) : (
+                    <>
+                      {" "}
+                      · You can pay any amount (partial or full)
+                    </>
+                  )}
                   {pendingApproval
-                    ? " · Pay now — MoMo/promo unlocks access automatically; proof needs admin review"
+                    ? " · Pay now — MoMo/promo unlocks access when the course total is covered; proof needs admin review"
                     : hasCourseAccess(enrollmentStatus)
                       ? " · Access already granted pending payment"
                       : null}
@@ -291,9 +331,26 @@ const LearnerPayment = () => {
                 {tab === "momo" && (
                   <div className="space-y-3 rounded-xl border p-4">
                     <p className="text-sm text-muted-foreground">
-                      Enter the MTN or Airtel number that will receive the payment prompt.
+                      Enter the MTN or Airtel number that will receive the payment prompt, and any amount up to the remaining balance.
+                      Money is received on the MoMo number set in Platform Settings.
                       {!momoConfigured ? " (Gateway not configured yet — use bank transfer + proof meanwhile.)" : ""}
                     </p>
+                    <div className="space-y-2">
+                      <Label htmlFor="momo-amount">Amount to pay (RWF)</Label>
+                      <Input
+                        id="momo-amount"
+                        type="number"
+                        min={1}
+                        max={displayRemaining || undefined}
+                        step={1}
+                        placeholder={String(displayRemaining || coursePrice || "")}
+                        value={payAmount}
+                        onChange={(e) => setPayAmount(e.target.value)}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Remaining balance: {formattedRemaining} RWF. You can pay less than the total in several payments.
+                      </p>
+                    </div>
                     <div className="space-y-2">
                       <Label htmlFor="momo-phone">Mobile Money number</Label>
                       <Input
@@ -303,7 +360,10 @@ const LearnerPayment = () => {
                         onChange={(e) => setPhone(e.target.value)}
                       />
                     </div>
-                    <Button onClick={handleMomo} disabled={busy || !phone.trim() || !momoConfigured}>
+                    <Button
+                      onClick={handleMomo}
+                      disabled={busy || !phone.trim() || !momoConfigured || !payAmount}
+                    >
                       {busy ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
                       Request Mobile Money payment
                     </Button>

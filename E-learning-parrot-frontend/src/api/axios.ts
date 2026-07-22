@@ -2292,6 +2292,15 @@ export type PaymentConfig = {
   configured: boolean;
   currency?: string;
   default_mno?: string;
+  receiver_phone?: string;
+  receiver_name?: string;
+  allows_partial_amount?: boolean;
+  balance?: {
+    course_price: number;
+    amount_paid: number;
+    amount_remaining: number;
+    currency: string;
+  } | null;
   guidelines?: {
     packs?: Array<{
       name: string;
@@ -2313,9 +2322,12 @@ export type PaymentConfig = {
   };
 };
 
-export const getPaymentConfig = async () => {
+export const getPaymentConfig = async (opts?: { courseId?: number; studentId?: number }) => {
+  const params: Record<string, number> = {};
+  if (opts?.courseId) params.course_id = opts.courseId;
+  if (opts?.studentId) params.student_id = opts.studentId;
   try {
-    const response = await api.get(`/payments/config`);
+    const response = await api.get(`/payments/config`, { params });
     return response.data as PaymentConfig;
   } catch {
     const response = await api.get(`/payments/stripe-config`);
@@ -2354,19 +2366,24 @@ export const requestMomoPayment = async (
   courseId: number,
   studentId: number,
   phone: string,
-  mno: "mtn" | "airtel" = "mtn"
+  mno: "mtn" | "airtel" = "mtn",
+  amount?: number
 ) => {
   const response = await api.post(`/payments/momo/request`, {
     course_id: courseId,
     student_id: studentId,
     phone,
     mno,
+    ...(amount != null && amount > 0 ? { amount } : {}),
   });
   return response.data as {
     ok: boolean;
     message: string;
     transaction_id?: string;
     payment_id?: number;
+    amount?: number;
+    amount_remaining?: number;
+    course_price?: number;
   };
 };
 

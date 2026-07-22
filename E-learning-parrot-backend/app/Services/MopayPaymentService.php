@@ -51,6 +51,55 @@ class MopayPaymentService
         return (int) max(0, round((float) ($course->price ?? 0)));
     }
 
+    /** Successful MoMo / promo / admin-confirmed payments toward a course enrollment. */
+    public function paidTotalRwf(int $courseId, int $studentId): int
+    {
+        $cents = (int) CoursePayment::query()
+            ->where('course_id', $courseId)
+            ->where('student_id', $studentId)
+            ->whereIn('status', ['paid', 'succeeded', 'completed'])
+            ->sum('amount_cents');
+
+        return (int) max(0, (int) round($cents / 100));
+    }
+
+    public function remainingDueRwf(Course $course, int $studentId): int
+    {
+        $due = $this->courseAmountRwf($course);
+        if ($due <= 0) {
+            return 0;
+        }
+
+        return max(0, $due - $this->paidTotalRwf((int) $course->id, $studentId));
+    }
+
+    /**
+     * @return array{course_price:int,amount_paid:int,amount_remaining:int,currency:string}
+     */
+    public function balanceFor(Course $course, int $studentId): array
+    {
+        $price = $this->courseAmountRwf($course);
+        $paid = $this->paidTotalRwf((int) $course->id, $studentId);
+
+        return [
+            'course_price' => $price,
+            'amount_paid' => $paid,
+            'amount_remaining' => max(0, $price - $paid),
+            'currency' => strtoupper((string) config('services.mopay.default_currency', 'RWF')),
+        ];
+    }
+
+    /** MoMo receive MSISDN from Platform settings (fallback to env). */
+    public function receiverAccountNo(): string
+    {
+        $receiver = trim(SiteSetting::current()->resolvedMomoReceiverPhone());
+        if ($receiver !== '') {
+            return $receiver;
+        }
+
+        return trim((string) config('services.mopay.receiver_account_no', ''));
+    }
+
     public function normalizeMsisdn(string $phone): string
     {
         return $this->gateway->normalizeMsisdn($phone);
@@ -85,7 +134,10 @@ class MopayPaymentService
         return $result;
     }
 
-    public function requestPayment(Course $course, int $studentId, string $phone, string $mno = 'mtn'): array
+    /**
+     * @param  int|null  $amountRwf  Optional partial amount (any amount >= 1). Defaults to remaining due.
+     */
+    public function requestPayment(Course $course, int $studentId, string $phone, string $mno = 'mtn', ?int $amountRwf = null): array
     {
         $ready = $this->assertReady();
         if (!$ready['ok']) {
@@ -100,13 +152,39 @@ class MopayPaymentService
             return ['ok' => false, 'status' => 422, 'message' => 'You must apply for this course before paying.'];
         }
 
+        if (EnrollmentStatusHelper::isPaid($enrollment->status)) {
+            return ['ok' => false, 'status' => 422, 'message' => 'This enrollment is already fully paid.'];
+        }
+
         if (!EnrollmentStatusHelper::canPay($enrollment->status)) {
             return ['ok' => false, 'status' => 422, 'message' => 'Payment is not available for this enrollment status.'];
         }
 
-        $amount = $this->courseAmountRwf($course);
-        if ($amount <= 0) {
+        $coursePrice = $this->courseAmountRwf($course);
+        if ($coursePrice <= 0) {
             return ['ok' => false, 'status' => 422, 'message' => 'Course price is not set for payments.'];
+        }
+
+        $balance = $this->balanceFor($course, $studentId);
+        $remaining = (int) $balance['amount_remaining'];
+        if ($remaining <= 0) {
+            $this->markEnrollmentPaidIfSettled((int) $course->id, $studentId);
+
+            return ['ok' => false, 'status' => 422, 'message' => 'No remaining balance for this course.'];
+        }
+
+        // Partial payments allowed: any amount from 1 RWF up to remaining due.
+        $amount = $amountRwf !== null ? (int) $amountRwf : $remaining;
+        if ($amount < 1) {
+            return ['ok' => false, 'status' => 422, 'message' => 'Enter an amount of at least 1 RWF.'];
+        }
+        if ($amount > $remaining) {
+            return [
+                'ok' => false,
+                'status' => 422,
+                'message' => "Amount cannot exceed the remaining balance ({$remaining} RWF).",
+                'amount_remaining' => $remaining,
+            ];
         }
 
         $msisdn = $this->normalizeMsisdn($phone);
@@ -114,16 +192,20 @@ class MopayPaymentService
             return ['ok' => false, 'status' => 422, 'message' => 'Enter a valid MTN/Airtel Rwanda mobile money number.'];
         }
 
+        $receiver = $this->receiverAccountNo();
+        if ($receiver === '') {
+            return [
+                'ok' => false,
+                'status' => 503,
+                'message' => 'Payment receive number is not set. Ask an admin to set it under Settings → Payments.',
+            ];
+        }
+
         $slug = strtoupper(preg_replace('/[^A-Z0-9]/', '', (string) config('services.mopay.project_slug', 'FRW')) ?: 'FRW');
         $transactionId = $slug . '_' . $course->id . '_' . $studentId . '_' . time() . '_' . random_int(1000, 9999);
         $transactionId = preg_replace('/[^A-Z0-9_]/', '', strtoupper($transactionId)) ?: ($slug . '_' . time());
 
         $currency = (string) config('services.mopay.default_currency', 'RWF');
-        $receiver = trim(SiteSetting::current()->resolvedMomoReceiverPhone());
-        if ($receiver === '') {
-            $receiver = trim((string) config('services.mopay.receiver_account_no'));
-        }
-
         $prefix = (string) config('services.mopay.message_prefix', 'FRWANDA');
         $title = (string) config('services.mopay.payment_title', 'FR_Rwanda_course_payment');
 
@@ -140,7 +222,7 @@ class MopayPaymentService
                 'currency' => $currency,
                 'country_code' => (string) config('services.mopay.default_country_code', 'rw'),
                 'mno' => $mno ?: (string) config('services.mopay.default_mno', 'mtn'),
-                'use_transfer' => $receiver !== '',
+                'use_transfer' => true,
             ]);
         } catch (\Throwable $e) {
             Log::error('MoPay request failed', [
@@ -171,6 +253,10 @@ class MopayPaymentService
                 'flow' => $gatewayResult['flow'] ?? null,
                 'auth_mode' => $gatewayResult['auth_mode'] ?? null,
                 'project' => config('services.mopay.project_slug'),
+                'partial' => $amount < $remaining,
+                'course_price' => $coursePrice,
+                'amount_remaining_before' => $remaining,
+                'receiver_from_settings' => true,
             ],
         ]);
 
@@ -190,12 +276,17 @@ class MopayPaymentService
 
         return [
             'ok' => true,
-            'message' => 'Approve the payment prompt on your phone to complete enrollment.',
+            'message' => $amount < $remaining
+                ? 'Approve the payment prompt on your phone. This is a partial payment toward the course.'
+                : 'Approve the payment prompt on your phone to complete enrollment.',
             'payment_id' => $payment->id,
             'transaction_id' => $transactionId,
             'amount' => $amount,
             'currency' => $currency,
             'msisdn' => $msisdnStored,
+            'course_price' => $coursePrice,
+            'amount_paid' => (int) $balance['amount_paid'],
+            'amount_remaining' => $remaining,
         ];
     }
 
@@ -211,6 +302,28 @@ class MopayPaymentService
 
         $enrollment->status = 'paid';
         $enrollment->save();
+    }
+
+    /** Mark paid only when cumulative successful payments cover the course price. */
+    public function markEnrollmentPaidIfSettled(int $courseId, int $studentId): bool
+    {
+        $course = Course::find($courseId);
+        if (!$course) {
+            return false;
+        }
+
+        $price = $this->courseAmountRwf($course);
+        if ($price <= 0) {
+            return false;
+        }
+
+        if ($this->paidTotalRwf($courseId, $studentId) < $price) {
+            return false;
+        }
+
+        $this->markEnrollmentPaid($courseId, $studentId);
+
+        return true;
     }
 
     public function verifyWebhookJwt(string $jwt): array
@@ -277,7 +390,8 @@ class MopayPaymentService
             $payment->save();
         }
 
-        $this->markEnrollmentPaid((int) $payment->course_id, (int) $payment->student_id);
+        // Partial payments: unlock enrollment only when total paid covers course price.
+        $this->markEnrollmentPaidIfSettled((int) $payment->course_id, (int) $payment->student_id);
 
         return true;
     }

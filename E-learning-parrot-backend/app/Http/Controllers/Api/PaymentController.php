@@ -89,7 +89,7 @@ class PaymentController extends Controller
         $payment->save();
 
         if (in_array($data['status'], ['paid', 'succeeded', 'completed'], true)) {
-            $this->mopayPayments->markEnrollmentPaid((int) $payment->course_id, (int) $payment->student_id);
+            $this->mopayPayments->markEnrollmentPaidIfSettled((int) $payment->course_id, (int) $payment->student_id);
         }
 
         ApiListCache::bump('payments');
@@ -102,11 +102,21 @@ class PaymentController extends Controller
     }
 
     /** Public payment provider config for the learner checkout page. */
-    public function paymentConfig()
+    public function paymentConfig(Request $request)
     {
         $mopayReady = $this->mopayPayments->isConfigured();
         $settings = \App\Models\SiteSetting::current();
         $receiver = $settings->paymentReceiverPayload();
+
+        $balance = null;
+        $courseId = (int) $request->query('course_id', 0);
+        $studentId = (int) $request->query('student_id', 0);
+        if ($courseId > 0 && $studentId > 0) {
+            $course = Course::find($courseId);
+            if ($course) {
+                $balance = $this->mopayPayments->balanceFor($course, $studentId);
+            }
+        }
 
         return response()->json([
             'provider' => 'mopay',
@@ -115,6 +125,8 @@ class PaymentController extends Controller
             'default_mno' => config('services.mopay.default_mno', 'mtn'),
             'receiver_phone' => $receiver['display_momo_phone'],
             'receiver_name' => $receiver['momo_receiver_name'],
+            'allows_partial_amount' => true,
+            'balance' => $balance,
             'guidelines' => [
                 'packs' => [
                     ['name' => 'Pack Intensif', 'online' => '80 000 RWF', 'in_person' => '150 000 RWF', 'duration' => '1 mois'],
@@ -168,14 +180,17 @@ class PaymentController extends Controller
             'student_id' => 'required|integer',
             'phone' => 'required|string|min:9|max:20',
             'mno' => 'nullable|string|in:mtn,airtel',
+            'amount' => 'nullable|numeric|min:1',
         ]);
 
         $course = Course::findOrFail($validated['course_id']);
+        $amountRwf = isset($validated['amount']) ? (int) floor((float) $validated['amount']) : null;
         $result = $this->mopayPayments->requestPayment(
             $course,
             (int) $validated['student_id'],
             $validated['phone'],
-            $validated['mno'] ?? 'mtn'
+            $validated['mno'] ?? 'mtn',
+            $amountRwf
         );
 
         if (empty($result['ok'])) {
