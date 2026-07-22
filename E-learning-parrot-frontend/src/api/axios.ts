@@ -2387,6 +2387,27 @@ export const requestMomoPayment = async (
   };
 };
 
+export const syncMomoPaymentStatus = async (reference: string) => {
+  const response = await api.get(`/payments/momo/status/${encodeURIComponent(reference)}`);
+  return response.data as {
+    ok: boolean;
+    message: string;
+    payment?: {
+      id?: number;
+      status?: string;
+      transaction_id?: string;
+      amount?: number;
+    };
+    enrollment?: {
+      activated?: boolean;
+      status?: string | null;
+      amount_paid?: number;
+      amount_remaining?: number;
+      course_price?: number;
+    };
+  };
+};
+
 export type PublicPayNowCourse = {
   id: number;
   title: string;

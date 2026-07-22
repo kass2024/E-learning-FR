@@ -3,6 +3,7 @@
 export type EnrollmentStatus =
   | "enrolled"
   | "approved"
+  | "partial_paid"
   | "paid"
   | "completed"
   | "rejected"
@@ -21,18 +22,28 @@ export function isPendingEnrollmentApproval(status?: string | null): boolean {
 
 export function canPayForEnrollment(status?: string | null): boolean {
   const s = normalizeEnrollmentStatus(status);
-  return s === "enrolled" || s === "applied" || s === "waiting approval" || s === "approved";
+  return (
+    s === "enrolled" ||
+    s === "applied" ||
+    s === "waiting approval" ||
+    s === "approved" ||
+    s === "partial_paid"
+  );
 }
 
 /** Full course resource access (materials, live classes, quizzes). */
 export function hasCourseAccess(status?: string | null): boolean {
   const s = normalizeEnrollmentStatus(status);
-  return s === "approved" || s === "paid" || s === "completed";
+  return s === "approved" || s === "partial_paid" || s === "paid" || s === "completed";
 }
 
 export function isEnrollmentPaid(status?: string | null): boolean {
   const s = normalizeEnrollmentStatus(status);
   return s === "paid" || s === "completed";
+}
+
+export function isEnrollmentPartialPaid(status?: string | null): boolean {
+  return normalizeEnrollmentStatus(status) === "partial_paid";
 }
 
 export function isEnrollmentRejected(status?: string | null): boolean {
@@ -48,6 +59,7 @@ export function canViewCourseGuide(status?: string | null): boolean {
     isPendingEnrollmentApproval(s) ||
     hasCourseAccess(s) ||
     s === "approved" ||
+    s === "partial_paid" ||
     s === "paid" ||
     s === "completed"
   );
@@ -56,6 +68,7 @@ export function canViewCourseGuide(status?: string | null): boolean {
 export function enrollmentBadgeLabel(status?: string | null): string {
   const s = normalizeEnrollmentStatus(status);
   if (s === "paid") return "Paid";
+  if (s === "partial_paid") return "Partial paid";
   if (s === "completed") return "Completed";
   if (s === "approved") return "Active — payment due";
   if (s === "rejected") return "Rejected";
@@ -63,9 +76,18 @@ export function enrollmentBadgeLabel(status?: string | null): string {
   return "Not applied";
 }
 
-export function enrollmentPaymentStatusText(status?: string | null): string {
+export function enrollmentPaymentStatusText(
+  status?: string | null,
+  remaining?: number | null
+): string {
   const s = normalizeEnrollmentStatus(status);
   if (isEnrollmentPaid(s)) return "Paid";
+  if (isEnrollmentPartialPaid(s)) {
+    if (remaining != null && remaining > 0) {
+      return `Partial paid — ${Number(remaining).toLocaleString()} RWF remaining`;
+    }
+    return "Partial paid — remaining balance due";
+  }
   if (s === "approved") return "Unpaid — access granted";
   if (s === "rejected") return "Not applicable (application rejected)";
   if (isPendingEnrollmentApproval(s)) {

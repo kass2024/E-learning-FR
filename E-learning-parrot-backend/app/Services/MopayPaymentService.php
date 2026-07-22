@@ -304,26 +304,141 @@ class MopayPaymentService
         $enrollment->save();
     }
 
-    /** Mark paid only when cumulative successful payments cover the course price. */
-    public function markEnrollmentPaidIfSettled(int $courseId, int $studentId): bool
+    /**
+     * After any successful MoMo payment: activate course.
+     * - Fully covered → status paid
+     * - Otherwise → status partial_paid (still has access; can pay remaining)
+     *
+     * @return array{activated:bool,status:?string,amount_paid:int,amount_remaining:int,course_price:int}
+     */
+    public function applyEnrollmentPaymentProgress(int $courseId, int $studentId): array
     {
         $course = Course::find($courseId);
-        if (!$course) {
-            return false;
+        $balance = $course
+            ? $this->balanceFor($course, $studentId)
+            : ['course_price' => 0, 'amount_paid' => 0, 'amount_remaining' => 0];
+
+        $enrollment = CourseEnrollment::where('course_id', $courseId)
+            ->where('student_id', $studentId)
+            ->first();
+
+        if (!$enrollment) {
+            return [
+                'activated' => false,
+                'status' => null,
+                'amount_paid' => (int) $balance['amount_paid'],
+                'amount_remaining' => (int) $balance['amount_remaining'],
+                'course_price' => (int) $balance['course_price'],
+            ];
         }
 
-        $price = $this->courseAmountRwf($course);
-        if ($price <= 0) {
-            return false;
+        $paid = (int) $balance['amount_paid'];
+        if ($paid <= 0) {
+            return [
+                'activated' => EnrollmentStatusHelper::hasCourseAccess($enrollment->status),
+                'status' => $enrollment->status,
+                'amount_paid' => 0,
+                'amount_remaining' => (int) $balance['amount_remaining'],
+                'course_price' => (int) $balance['course_price'],
+            ];
         }
 
-        if ($this->paidTotalRwf($courseId, $studentId) < $price) {
-            return false;
+        $remaining = (int) $balance['amount_remaining'];
+        $enrollment->status = $remaining <= 0 ? 'paid' : 'partial_paid';
+        $enrollment->save();
+
+        return [
+            'activated' => true,
+            'status' => $enrollment->status,
+            'amount_paid' => $paid,
+            'amount_remaining' => $remaining,
+            'course_price' => (int) $balance['course_price'],
+        ];
+    }
+
+    /** @deprecated Use applyEnrollmentPaymentProgress — kept for callers that expect bool. */
+    public function markEnrollmentPaidIfSettled(int $courseId, int $studentId): bool
+    {
+        $result = $this->applyEnrollmentPaymentProgress($courseId, $studentId);
+
+        return !empty($result['activated']);
+    }
+
+    /**
+     * Poll MoPay transaction status and activate enrollment when gateway reports success.
+     * Used when webhooks are delayed/missing.
+     *
+     * @return array{ok:bool,message:string,payment?:array,enrollment?:array}
+     */
+    public function syncPaymentFromGateway(string $transactionId): array
+    {
+        $baseRef = preg_replace('/_T$/', '', $transactionId) ?: $transactionId;
+        $payment = CoursePayment::query()
+            ->whereIn('external_reference', array_values(array_unique([$transactionId, $baseRef])))
+            ->orderByDesc('id')
+            ->first();
+
+        if (!$payment) {
+            return ['ok' => false, 'message' => 'Payment not found.'];
         }
 
-        $this->markEnrollmentPaid($courseId, $studentId);
+        if (in_array($payment->status, ['paid', 'succeeded', 'completed'], true)) {
+            $progress = $this->applyEnrollmentPaymentProgress((int) $payment->course_id, (int) $payment->student_id);
 
-        return true;
+            return [
+                'ok' => true,
+                'message' => 'Payment already confirmed.',
+                'payment' => [
+                    'id' => $payment->id,
+                    'status' => $payment->status,
+                    'transaction_id' => $payment->external_reference,
+                    'amount' => (int) round($payment->amount_cents / 100),
+                ],
+                'enrollment' => $progress,
+            ];
+        }
+
+        $gateway = $this->gateway->transactionStatus((string) $payment->external_reference);
+        if (!$gateway['success']) {
+            // Also try transfer leg id.
+            $gateway = $this->gateway->transactionStatus((string) $payment->external_reference . '_T');
+        }
+
+        if ($gateway['success']) {
+            $this->handleWebhookSuccess(
+                (string) $payment->external_reference,
+                is_array($gateway['response']) ? $gateway['response'] : ['source' => 'status_poll']
+            );
+            $payment = $payment->fresh();
+            $progress = $this->applyEnrollmentPaymentProgress((int) $payment->course_id, (int) $payment->student_id);
+
+            return [
+                'ok' => true,
+                'message' => 'Payment confirmed and course activated.',
+                'payment' => [
+                    'id' => $payment->id,
+                    'status' => $payment->status,
+                    'transaction_id' => $payment->external_reference,
+                    'amount' => (int) round($payment->amount_cents / 100),
+                ],
+                'enrollment' => $progress,
+            ];
+        }
+
+        return [
+            'ok' => true,
+            'message' => 'Payment still processing. Approve the prompt on your phone if asked.',
+            'payment' => [
+                'id' => $payment->id,
+                'status' => $payment->status,
+                'transaction_id' => $payment->external_reference,
+                'amount' => (int) round($payment->amount_cents / 100),
+            ],
+            'gateway' => [
+                'http_status' => $gateway['http_status'],
+                'response' => $gateway['response'],
+            ],
+        ];
     }
 
     public function verifyWebhookJwt(string $jwt): array
@@ -390,8 +505,8 @@ class MopayPaymentService
             $payment->save();
         }
 
-        // Partial payments: unlock enrollment only when total paid covers course price.
-        $this->markEnrollmentPaidIfSettled((int) $payment->course_id, (int) $payment->student_id);
+        // Activate on any successful payment; partial_paid if balance remains.
+        $this->applyEnrollmentPaymentProgress((int) $payment->course_id, (int) $payment->student_id);
 
         return true;
     }

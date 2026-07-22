@@ -57,19 +57,14 @@ class ExternalPayNowController extends Controller
 
     public function status(string $reference)
     {
-        $payment = $this->payNow->findByReference($reference);
-        if (!$payment) {
-            return response()->json(['message' => 'Payment not found.'], 404);
-        }
-
-        // If already paid but email failed earlier, retry once on status poll.
-        if (in_array($payment->status, ['paid', 'succeeded', 'completed'], true) && !$payment->receipt_emailed) {
-            $this->payNow->ensureReceiptEmailed($payment->fresh());
-            $payment = $payment->fresh();
+        $result = $this->payNow->syncPaymentFromGateway($reference);
+        if (empty($result['ok'])) {
+            return response()->json(['message' => $result['message'] ?? 'Payment not found.'], 404);
         }
 
         return response()->json([
-            'payment' => $this->payNow->mapPayment($payment),
+            'payment' => $result['payment'] ?? null,
+            'message' => $result['message'] ?? null,
         ]);
     }
 }

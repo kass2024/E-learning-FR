@@ -25,9 +25,16 @@ import {
   getPaymentConfig,
   getStudentCourseEnrollments,
   requestMomoPayment,
+  syncMomoPaymentStatus,
   submitPaymentProof,
 } from "@/api/axios";
-import { canPayForEnrollment, hasCourseAccess, isEnrollmentPaid, isPendingEnrollmentApproval } from "@/lib/enrollmentStatus";
+import {
+  canPayForEnrollment,
+  hasCourseAccess,
+  isEnrollmentPaid,
+  isEnrollmentPartialPaid,
+  isPendingEnrollmentApproval,
+} from "@/lib/enrollmentStatus";
 
 type PayTab = "momo" | "promo" | "proof";
 
@@ -145,7 +152,34 @@ const LearnerPayment = () => {
         title: "Check your phone",
         description: res.message || "Approve the Mobile Money prompt to finish payment.",
       });
-      if (typeof res.amount_remaining === "number") {
+      const tx = res.transaction_id;
+      if (tx) {
+        // Poll MoPay status so courses activate even when webhook is delayed.
+        for (let i = 0; i < 12; i++) {
+          await new Promise((r) => setTimeout(r, 5000));
+          try {
+            const sync = await syncMomoPaymentStatus(tx);
+            if (sync.payment?.status === "paid" || sync.enrollment?.activated) {
+              const rem = sync.enrollment?.amount_remaining ?? 0;
+              const st = sync.enrollment?.status || "paid";
+              setEnrollmentStatus(st);
+              setAmountPaid(Number(sync.enrollment?.amount_paid ?? amountPaid + amountNum));
+              setAmountRemaining(Math.max(0, rem));
+              setPayAmount(String(Math.max(0, rem)));
+              toast({
+                title: rem > 0 ? "Partial payment confirmed" : "Payment confirmed",
+                description:
+                  rem > 0
+                    ? `Course activated. Remaining balance: ${rem.toLocaleString()} RWF.`
+                    : "Course activated and marked as paid.",
+              });
+              break;
+            }
+          } catch {
+            /* keep polling */
+          }
+        }
+      } else if (typeof res.amount_remaining === "number") {
         setAmountRemaining(Math.max(0, res.amount_remaining));
         setPayAmount(String(Math.max(0, res.amount_remaining)));
       }
@@ -214,9 +248,10 @@ const LearnerPayment = () => {
   });
 
   const canPay = canPayForEnrollment(enrollmentStatus);
-  const alreadyPaid = isEnrollmentPaid(enrollmentStatus) || (coursePrice > 0 && amountRemaining <= 0 && amountPaid >= coursePrice);
+  const alreadyPaid = isEnrollmentPaid(enrollmentStatus);
+  const partiallyPaid = isEnrollmentPartialPaid(enrollmentStatus);
   const pendingApproval = isPendingEnrollmentApproval(enrollmentStatus);
-  const approvalBlocked = hasCourseContext && !canPay && !alreadyPaid;
+  const approvalBlocked = hasCourseContext && !canPay && !alreadyPaid && !partiallyPaid;
 
   if (isLoading) {
     return (
@@ -256,7 +291,7 @@ const LearnerPayment = () => {
             <Button onClick={() => navigate("/dashboard/learner")}>Browse courses</Button>
           </CardContent>
         </Card>
-      ) : alreadyPaid ? (
+      ) : alreadyPaid && !partiallyPaid ? (
         <Card className="rounded-2xl border-emerald-200 bg-emerald-50/80">
           <CardContent className="py-12 text-center space-y-4">
             <CheckCircle2 className="h-12 w-12 text-emerald-600 mx-auto" />

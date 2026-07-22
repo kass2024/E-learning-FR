@@ -298,6 +298,52 @@ class MopayGatewayClient
             $raw = $res->body();
         }
 
+        // Receiver MSISDN not authorized on merchant → try env receiver, then debit-only.
+        $errMsg = is_array($body) && isset($body['message']) && is_string($body['message'])
+            ? $body['message']
+            : (string) $raw;
+        if (
+            $useTransfer
+            && $res->status() >= 400
+            && stripos($errMsg, 'TARGET_AUTHORIZATION') !== false
+        ) {
+            $envReceiver = trim((string) ($this->config['receiver_account_no'] ?? ''));
+            $triedReceiver = $this->normalizeMsisdn($receiver);
+            $envMsisdn = $envReceiver !== '' ? $this->normalizeMsisdn($envReceiver) : '';
+
+            if ($envMsisdn !== '' && $envMsisdn !== $triedReceiver) {
+                $retryPayload = $payload;
+                $retryPayload['transfers'][0]['account_no'] = $envMsisdn;
+                $res = Http::withHeaders($headers)->timeout(60)->post($url, $retryPayload);
+                $body = $res->json();
+                $raw = $res->body();
+                $payload = $retryPayload;
+                $errMsg = is_array($body) && isset($body['message']) && is_string($body['message'])
+                    ? $body['message']
+                    : (string) $raw;
+            }
+
+            if ($res->status() >= 400 && stripos($errMsg, 'TARGET_AUTHORIZATION') !== false) {
+                $debitUrl = $base . '/api/v2/momo/debit';
+                $debitPayload = [
+                    'account_no' => $accountNo,
+                    'payment_type' => 'momo',
+                    'message' => $message,
+                    'transactionId' => $transactionId,
+                    'currency' => $currency,
+                    'amount' => $amount,
+                    'country_code' => $country,
+                    'mno' => $mno,
+                ];
+                $res = Http::withHeaders($headers)->timeout(60)->post($debitUrl, $debitPayload);
+                $body = $res->json();
+                $raw = $res->body();
+                $payload = $debitPayload;
+                $url = $debitUrl;
+                $flow = 'debit_only_after_target_auth_error';
+            }
+        }
+
         return [
             'ok' => $res->successful(),
             'http_status' => $res->status(),
@@ -308,6 +354,48 @@ class MopayGatewayClient
             'raw' => $raw,
             'auth_mode' => $this->describeAuthMode($authValue),
             'msisdn' => $accountNo,
+        ];
+    }
+
+    /**
+     * GET /api/v1/momo/transactionstatus/{trxId}
+     *
+     * @return array{ok:bool,http_status:int,response:mixed,raw:string,success:bool}
+     */
+    public function transactionStatus(string $transactionId): array
+    {
+        $trxId = preg_replace('/_T$/', '', trim($transactionId)) ?: trim($transactionId);
+        $url = $this->serverBaseUrl() . '/api/v1/momo/transactionstatus/' . rawurlencode($trxId);
+        $headers = [
+            'Authorization' => $this->authorizationHeader(),
+            'Accept' => 'application/json',
+        ];
+
+        $res = Http::withHeaders($headers)->timeout(30)->get($url);
+        $body = $res->json();
+        $raw = $res->body();
+
+        $statusStr = '';
+        if (is_array($body)) {
+            $statusStr = strtolower((string) ($body['status'] ?? $body['transactionStatus'] ?? $body['state'] ?? ''));
+            if ($statusStr === '' && isset($body['message']) && is_string($body['message'])) {
+                $statusStr = strtolower($body['message']);
+            }
+        }
+
+        $success = $res->successful() && (
+            in_array($statusStr, ['success', 'successful', 'completed', 'paid', 'ok', '200'], true)
+            || (isset($body['statusCode']) && (int) $body['statusCode'] === 200)
+            || (isset($body['status']) && (int) $body['status'] === 200)
+            || (is_array($body) && !empty($body['momoRef']))
+        );
+
+        return [
+            'ok' => $res->successful(),
+            'http_status' => $res->status(),
+            'response' => $body,
+            'raw' => $raw,
+            'success' => $success,
         ];
     }
 

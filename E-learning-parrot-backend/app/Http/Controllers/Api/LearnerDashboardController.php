@@ -182,6 +182,7 @@ class LearnerDashboardController extends Controller
             $progress = match ($status) {
                 'completed' => 100,
                 'paid' => 75,
+                'partial_paid' => 55,
                 'approved' => 40,
                 'enrolled' => 15,
                 default => 5,

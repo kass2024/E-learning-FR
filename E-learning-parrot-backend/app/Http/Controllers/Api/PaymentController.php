@@ -89,7 +89,7 @@ class PaymentController extends Controller
         $payment->save();
 
         if (in_array($data['status'], ['paid', 'succeeded', 'completed'], true)) {
-            $this->mopayPayments->markEnrollmentPaidIfSettled((int) $payment->course_id, (int) $payment->student_id);
+            $this->mopayPayments->applyEnrollmentPaymentProgress((int) $payment->course_id, (int) $payment->student_id);
         }
 
         ApiListCache::bump('payments');
@@ -202,6 +202,14 @@ class PaymentController extends Controller
         ApiListCache::bump('payments');
 
         return response()->json($result);
+    }
+
+    /** Poll MoPay + activate course when webhook is delayed. */
+    public function momoStatus(string $reference)
+    {
+        $result = $this->mopayPayments->syncPaymentFromGateway($reference);
+
+        return response()->json($result, !empty($result['ok']) ? 200 : 404);
     }
 
     public function applyPromo(Request $request)
@@ -349,7 +357,42 @@ class PaymentController extends Controller
         try {
             $payload = $this->mopayPayments->verifyWebhookJwt($jwt);
         } catch (\Throwable $e) {
-            Log::warning('MoPay webhook JWT failed', ['error' => $e->getMessage()]);
+            Log::warning('MoPay webhook JWT failed — trying gateway status fallback', [
+                'error' => $e->getMessage(),
+            ]);
+
+            // Fallback: extract transaction id from raw payload and poll MoPay status API.
+            $fallbackTid = '';
+            if (str_starts_with($raw, '{')) {
+                $maybe = json_decode($raw, true);
+                if (is_array($maybe)) {
+                    $fallbackTid = (string) ($maybe['transactionId'] ?? $maybe['referenceId'] ?? '');
+                    $inner = $maybe['data'] ?? null;
+                    if ($fallbackTid === '' && is_array($inner)) {
+                        $fallbackTid = (string) ($inner['transactionId'] ?? $inner['referenceId'] ?? '');
+                    }
+                }
+            }
+            if ($fallbackTid !== '') {
+                $learner = $this->mopayPayments->syncPaymentFromGateway($fallbackTid);
+                if (!empty($learner['ok']) && (($learner['payment']['status'] ?? '') === 'paid')) {
+                    ApiListCache::bump('payments');
+
+                    return response()->json([
+                        'status' => 200,
+                        'message' => 'Webhook JWT failed but gateway status confirmed payment',
+                        'transactionId' => $fallbackTid,
+                    ], 200);
+                }
+                $ext = app(\App\Services\ExternalPayNowService::class)->syncPaymentFromGateway($fallbackTid);
+                if (!empty($ext['ok']) && (($ext['payment']['status'] ?? '') === 'paid')) {
+                    return response()->json([
+                        'status' => 200,
+                        'message' => 'External payment confirmed via gateway status',
+                        'transactionId' => $fallbackTid,
+                    ], 200);
+                }
+            }
 
             return response()->json(['status' => 401, 'message' => $e->getMessage()], 401);
         }

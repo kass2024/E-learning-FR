@@ -365,6 +365,7 @@ Route::prefix('admin')->group(function () {
     Route::post('payments/confirm-checkout', [PaymentController::class, 'confirmCheckout']);
     Route::post('payments/create-intent', [PaymentController::class, 'createIntent']);
     Route::post('payments/momo/request', [PaymentController::class, 'requestMomo']);
+    Route::get('payments/momo/status/{reference}', [PaymentController::class, 'momoStatus']);
     Route::post('payments/promo/apply', [PaymentController::class, 'applyPromo']);
     Route::post('payments/proof/submit', [PaymentController::class, 'submitProof']);
     Route::post('payments/mopay/register-callbacks', [PaymentController::class, 'registerMopayCallbacks']);

@@ -439,6 +439,7 @@ const LearnerDashboard = () => {
                 if (hasAccess && paid) badgeLabel = "Active — paid";
                 else if (hasAccess) badgeLabel = "Active — payment due";
                 else if (canPay && pending) badgeLabel = "Pay to activate";
+                else if (status === "partial_paid") badgeLabel = "Partial paid";
                 else if (canPay) badgeLabel = "Pay now";
                 else if (pending) badgeLabel = "Waiting approval";
                 else if (rejected) badgeLabel = "Rejected";

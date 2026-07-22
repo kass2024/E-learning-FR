@@ -208,6 +208,51 @@ class ExternalPayNowService
             ->first();
     }
 
+    /**
+     * @return array{ok:bool,message:string,payment?:array}
+     */
+    public function syncPaymentFromGateway(string $transactionId): array
+    {
+        $payment = $this->findByReference($transactionId);
+        if (!$payment) {
+            return ['ok' => false, 'message' => 'Payment not found.'];
+        }
+
+        if (in_array($payment->status, ['paid', 'succeeded', 'completed'], true)) {
+            $this->ensureReceiptEmailed($payment->fresh());
+
+            return [
+                'ok' => true,
+                'message' => 'Payment already confirmed.',
+                'payment' => $this->mapPayment($payment->fresh()),
+            ];
+        }
+
+        $gateway = $this->gateway->transactionStatus((string) $payment->external_reference);
+        if (!$gateway['success']) {
+            $gateway = $this->gateway->transactionStatus((string) $payment->external_reference . '_T');
+        }
+
+        if ($gateway['success']) {
+            $this->handleWebhookSuccess(
+                (string) $payment->external_reference,
+                is_array($gateway['response']) ? $gateway['response'] : ['source' => 'status_poll']
+            );
+
+            return [
+                'ok' => true,
+                'message' => 'Payment confirmed. Receipt emailed if possible.',
+                'payment' => $this->mapPayment($payment->fresh()),
+            ];
+        }
+
+        return [
+            'ok' => true,
+            'message' => 'Payment still processing.',
+            'payment' => $this->mapPayment($payment),
+        ];
+    }
+
     public function handleWebhookSuccess(string $transactionId, array $data): bool
     {
         $payment = $this->findByReference($transactionId);
