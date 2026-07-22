@@ -160,18 +160,25 @@ const LearnerPayment = () => {
           try {
             const sync = await syncMomoPaymentStatus(tx);
             if (sync.payment?.status === "paid" || sync.enrollment?.activated) {
-              const rem = sync.enrollment?.amount_remaining ?? 0;
+              const rem = Number(sync.enrollment?.amount_remaining ?? 0);
               const st = sync.enrollment?.status || "paid";
               setEnrollmentStatus(st);
               setAmountPaid(Number(sync.enrollment?.amount_paid ?? amountPaid + amountNum));
               setAmountRemaining(Math.max(0, rem));
               setPayAmount(String(Math.max(0, rem)));
-              toast({
-                title: rem > 0 ? "Partial payment confirmed" : "Payment confirmed",
-                description:
-                  rem > 0
-                    ? `Course activated. Remaining balance: ${rem.toLocaleString()} RWF.`
-                    : "Course activated and marked as paid.",
+              const title = rem > 0 ? "Partial payment confirmed" : "Payment confirmed";
+              const description =
+                rem > 0
+                  ? `Course activated. Remaining balance: ${rem.toLocaleString()} RWF.`
+                  : "Course activated and marked as paid.";
+              toast({ title, description });
+              navigate("/dashboard/learner", {
+                replace: true,
+                state: {
+                  paymentSuccess: true,
+                  paymentTitle: title,
+                  paymentMessage: description,
+                },
               });
               break;
             }

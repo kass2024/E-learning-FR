@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -68,6 +68,7 @@ function getCourseImage(course: { title?: string | null }) {
 const LearnerDashboard = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
+  const location = useLocation();
   const studentId = getStudentId() ?? 0;
   const {
     data,
@@ -79,6 +80,18 @@ const LearnerDashboard = () => {
     () => getLearnerDashboard(studentId),
     { enabled: studentId > 0 }
   );
+
+  useEffect(() => {
+    const state = location.state as
+      | { paymentSuccess?: boolean; paymentTitle?: string; paymentMessage?: string }
+      | null;
+    if (!state?.paymentSuccess) return;
+    toast({
+      title: state.paymentTitle || "Course activated",
+      description: state.paymentMessage || "Your payment was confirmed. You can continue learning.",
+    });
+    navigate(location.pathname, { replace: true, state: null });
+  }, [location.pathname, location.state, navigate, toast]);
   const [busyCourseId, setBusyCourseId] = useState<number | null>(null);
   const [courseLevels, setCourseLevels] = useState<Record<number, string>>({});
   const [shiftChangeCourse, setShiftChangeCourse] = useState<
