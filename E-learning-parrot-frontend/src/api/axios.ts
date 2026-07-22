@@ -1086,6 +1086,9 @@ export type PlatformInstitutionInfo = {
   slug: string;
   contact_email: string;
   contact_phone?: string | null;
+  momo_receiver_phone?: string | null;
+  momo_receiver_name?: string | null;
+  momo_whatsapp_phone?: string | null;
   website?: string | null;
   address?: string | null;
   logo_url?: string | null;

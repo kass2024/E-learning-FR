@@ -5,7 +5,6 @@ namespace App\Services;
 use App\Models\Course;
 use App\Models\CourseEnrollment;
 use App\Models\CoursePayment;
-use App\Models\SiteSetting;
 use App\Services\Mopay\MopayGatewayClient;
 use App\Support\EnrollmentStatusHelper;
 use Illuminate\Support\Facades\Log;
@@ -89,15 +88,10 @@ class MopayPaymentService
         ];
     }
 
-    /** MoMo receive MSISDN from Platform settings (fallback to env). */
-    public function receiverAccountNo(): string
+    /** MoMo receive MSISDN: institution owner when course is institutional, else main SiteSetting / env. */
+    public function receiverAccountNo(?Course $course = null): string
     {
-        $receiver = trim(SiteSetting::current()->resolvedMomoReceiverPhone());
-        if ($receiver !== '') {
-            return $receiver;
-        }
-
-        return trim((string) config('services.mopay.receiver_account_no', ''));
+        return app(PaymentReceiverService::class)->receiverAccountNo($course);
     }
 
     public function normalizeMsisdn(string $phone): string
@@ -192,7 +186,8 @@ class MopayPaymentService
             return ['ok' => false, 'status' => 422, 'message' => 'Enter a valid MTN/Airtel Rwanda mobile money number.'];
         }
 
-        $receiver = $this->receiverAccountNo();
+        $receiverPayload = app(PaymentReceiverService::class)->resolve($course);
+        $receiver = (string) ($receiverPayload['receiver_account_no'] ?? '');
         if ($receiver === '') {
             return [
                 'ok' => false,
@@ -260,6 +255,11 @@ class MopayPaymentService
                 'course_price' => $coursePrice,
                 'amount_remaining_before' => $remaining,
                 'receiver_from_settings' => true,
+                'receiver_source' => $receiverPayload['source'] ?? 'main',
+                'receiver_brand' => $receiverPayload['brand_name'] ?? null,
+                'receiver_name' => $receiverPayload['momo_receiver_name'] ?? null,
+                'receiver_phone' => $receiverPayload['display_momo_phone'] ?? null,
+                'platform_institution_id' => $receiverPayload['platform_institution_id'] ?? null,
                 'failure_reason' => $failureReason,
             ],
         ]);

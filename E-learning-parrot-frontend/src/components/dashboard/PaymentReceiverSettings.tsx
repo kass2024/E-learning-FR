@@ -11,7 +11,8 @@ import {
 } from "@/api/axios";
 
 /**
- * MoMo number that receives learner course payments (shown on Pay & Enroll + MoPay transfer).
+ * MoMo number that receives main-platform course payments (Settings → Payments).
+ * Partner institutions set their own owner number under Institution settings.
  */
 export default function PaymentReceiverSettings() {
   const { toast } = useToast();
@@ -95,8 +96,9 @@ export default function PaymentReceiverSettings() {
           Mobile Money receive number
         </CardTitle>
         <CardDescription>
-          This is the MTN/Airtel number that receives course payments. It appears under Modes de paiement on Pay &
-          Enroll, and MoPay transfers money to this number.
+          Main account owner MTN/Airtel number. Learners paying for main-platform courses send money here,
+          and Pay Now receipts use this branding. Partner institutions configure their own receive number
+          separately under Institution settings.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">

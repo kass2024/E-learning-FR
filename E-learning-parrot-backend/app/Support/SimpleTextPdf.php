@@ -47,7 +47,27 @@ class SimpleTextPdf
 
     private static function escape(string $text): string
     {
-        $text = preg_replace('/[^\x20-\x7E]/', '?', $text) ?? $text;
+        // Helvetica PDF strings are ASCII-only. Transliterate common punctuation
+        // so multi-byte chars (e.g. em-dash) do not become "???".
+        $map = [
+            "\u{2014}" => '-',
+            "\u{2013}" => '-',
+            "\u{2018}" => "'",
+            "\u{2019}" => "'",
+            "\u{201C}" => '"',
+            "\u{201D}" => '"',
+            "\u{2026}" => '...',
+            '—' => '-',
+            '–' => '-',
+            '‘' => "'",
+            '’' => "'",
+            '“' => '"',
+            '”' => '"',
+            '…' => '...',
+            '·' => '-',
+        ];
+        $text = strtr($text, $map);
+        $text = preg_replace('/[^\x20-\x7E]/u', '', $text) ?? $text;
 
         return str_replace(['\\', '(', ')'], ['\\\\', '\\(', '\\)'], $text);
     }

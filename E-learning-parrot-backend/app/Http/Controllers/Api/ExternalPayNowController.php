@@ -15,9 +15,13 @@ class ExternalPayNowController extends Controller
 
     public function courses()
     {
+        $main = app(\App\Services\PaymentReceiverService::class)->resolve(null);
+
         return response()->json([
             'courses' => $this->payNow->listPayableCourses(),
-            'receiver_phone' => \App\Models\SiteSetting::current()->paymentReceiverPayload()['display_momo_phone'] ?? null,
+            'receiver_phone' => $main['display_momo_phone'] ?? null,
+            'receiver_name' => $main['momo_receiver_name'] ?? null,
+            'brand_name' => $main['brand_name'] ?? null,
             'allows_partial_amount' => true,
             'currency' => strtoupper((string) config('services.mopay.default_currency', 'RWF')),
             'configured' => app(\App\Services\Mopay\MopayGatewayClient::class)->isConfigured(),

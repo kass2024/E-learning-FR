@@ -350,6 +350,9 @@ class PlatformInstitutionController extends Controller
             'name' => 'sometimes|string|max:255',
             'contact_email' => 'sometimes|email|max:255',
             'contact_phone' => 'nullable|string|max:50',
+            'momo_receiver_phone' => 'nullable|string|min:9|max:32',
+            'momo_receiver_name' => 'nullable|string|max:120',
+            'momo_whatsapp_phone' => 'nullable|string|max:32',
             'website' => 'nullable|url|max:255',
             'address' => 'nullable|string|max:1000',
             'admin_notes' => 'nullable|string|max:5000',
@@ -479,6 +482,9 @@ class PlatformInstitutionController extends Controller
             'address' => 'nullable|string|max:1000',
             'meeting_provider' => 'sometimes|string|in:zoom,daily',
             'logo' => 'nullable|file|mimes:png,jpg,jpeg,gif,webp|max:5120',
+            'momo_receiver_phone' => 'nullable|string|min:9|max:32',
+            'momo_receiver_name' => 'nullable|string|max:120',
+            'momo_whatsapp_phone' => 'nullable|string|max:32',
             'portal_tagline' => 'nullable|string|max:255',
             'portal_hero_title' => 'nullable|string|max:255',
             'portal_hero_subtitle' => 'nullable|string|max:2000',
@@ -517,6 +523,27 @@ class PlatformInstitutionController extends Controller
         }
         if (array_key_exists('address', $data)) {
             $institution->address = $data['address'];
+        }
+
+        if (array_key_exists('momo_receiver_phone', $data)) {
+            $rawPhone = trim((string) ($data['momo_receiver_phone'] ?? ''));
+            if ($rawPhone === '') {
+                $institution->momo_receiver_phone = null;
+            } else {
+                $digits = preg_replace('/\D+/', '', $rawPhone) ?: '';
+                if (strlen($digits) < 9) {
+                    return response()->json([
+                        'message' => 'Enter a valid institution owner Mobile Money number (at least 9 digits).',
+                    ], 422);
+                }
+                $institution->momo_receiver_phone = $rawPhone;
+            }
+        }
+        if (array_key_exists('momo_receiver_name', $data)) {
+            $institution->momo_receiver_name = trim((string) ($data['momo_receiver_name'] ?? '')) ?: null;
+        }
+        if (array_key_exists('momo_whatsapp_phone', $data)) {
+            $institution->momo_whatsapp_phone = trim((string) ($data['momo_whatsapp_phone'] ?? '')) ?: null;
         }
 
         if (array_key_exists('meeting_provider', $data)) {

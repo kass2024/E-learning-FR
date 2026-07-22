@@ -11,6 +11,7 @@ class PlatformInstitution extends Model
 {
     protected $fillable = [
         'name', 'slug', 'contact_email', 'contact_phone', 'website', 'address',
+        'momo_receiver_phone', 'momo_receiver_name', 'momo_whatsapp_phone',
         'logo_path', 'logo_url', 'status', 'payment_status', 'signup_fee_cents',
         'currency', 'stripe_customer_id', 'owner_user_id', 'promo_code_id',
         'approved_at', 'approved_by', 'admin_notes',
@@ -155,6 +156,9 @@ class PlatformInstitution extends Model
             'slug' => $this->slug,
             'contact_email' => $this->contact_email,
             'contact_phone' => $this->contact_phone,
+            'momo_receiver_phone' => $this->momo_receiver_phone,
+            'momo_receiver_name' => $this->momo_receiver_name,
+            'momo_whatsapp_phone' => $this->momo_whatsapp_phone,
             'website' => $this->website,
             'address' => $this->address,
             'logo_path' => $this->logo_path,

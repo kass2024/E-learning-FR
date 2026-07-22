@@ -44,6 +44,11 @@ class Course extends Model
         return $this->belongsTo(ElearningProgram::class, 'program_id');
     }
 
+    public function platformInstitution()
+    {
+        return $this->belongsTo(PlatformInstitution::class, 'platform_institution_id');
+    }
+
     public function instructors()
     {
         return $this->belongsToMany(

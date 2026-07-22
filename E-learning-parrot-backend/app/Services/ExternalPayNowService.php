@@ -5,7 +5,6 @@ namespace App\Services;
 use App\Mail\ExternalPayNowReceiptMail;
 use App\Models\Course;
 use App\Models\ExternalCoursePayment;
-use App\Models\SiteSetting;
 use App\Services\Mopay\MopayGatewayClient;
 use App\Support\SimpleTextPdf;
 use Illuminate\Support\Facades\Log;
@@ -27,17 +26,20 @@ class ExternalPayNowService
     }
 
     /**
-     * @return list<array{id:int,title:string,price:int,currency:string,duration:?string,description:?string}>
+     * @return list<array{id:int,title:string,price:int,currency:string,duration:?string,description:?string,brand_name:string,receiver_phone:?string}>
      */
     public function listPayableCourses(): array
     {
         $currency = strtoupper((string) config('services.mopay.default_currency', 'RWF'));
+        $resolver = app(PaymentReceiverService::class);
 
         return Course::query()
             ->where('price', '>', 0)
             ->orderBy('title')
-            ->get(['id', 'title', 'price', 'duration', 'description', 'status'])
-            ->map(function (Course $c) use ($currency) {
+            ->get(['id', 'title', 'price', 'duration', 'description', 'status', 'platform_institution_id'])
+            ->map(function (Course $c) use ($currency, $resolver) {
+                $brand = $resolver->resolve($c);
+
                 return [
                     'id' => (int) $c->id,
                     'title' => (string) $c->title,
@@ -45,20 +47,17 @@ class ExternalPayNowService
                     'currency' => $currency,
                     'duration' => $c->duration ? (string) $c->duration : null,
                     'description' => $c->description ? mb_substr(strip_tags((string) $c->description), 0, 220) : null,
+                    'brand_name' => $brand['brand_name'],
+                    'receiver_phone' => $brand['display_momo_phone'] ?: null,
                 ];
             })
             ->values()
             ->all();
     }
 
-    public function receiverAccountNo(): string
+    public function receiverAccountNo(?Course $course = null): string
     {
-        $receiver = trim(SiteSetting::current()->resolvedMomoReceiverPhone());
-        if ($receiver !== '') {
-            return $receiver;
-        }
-
-        return trim((string) config('services.mopay.receiver_account_no', ''));
+        return app(PaymentReceiverService::class)->receiverAccountNo($course);
     }
 
     /**
@@ -102,7 +101,8 @@ class ExternalPayNowService
             ];
         }
 
-        $receiver = $this->receiverAccountNo();
+        $brand = app(PaymentReceiverService::class)->resolve($course);
+        $receiver = (string) ($brand['receiver_account_no'] ?? '');
         if ($receiver === '') {
             return [
                 'ok' => false,
@@ -176,6 +176,13 @@ class ExternalPayNowService
                 'http_status' => $gatewayResult['http_status'] ?? null,
                 'auth_mode' => $gatewayResult['auth_mode'] ?? null,
                 'receiver_from_settings' => true,
+                'receiver_source' => $brand['source'] ?? 'main',
+                'receiver_brand' => $brand['brand_name'] ?? null,
+                'receiver_name' => $brand['momo_receiver_name'] ?? null,
+                'receiver_phone' => $brand['display_momo_phone'] ?? null,
+                'brand_logo_url' => $brand['brand_logo_url'] ?? null,
+                'brand_primary_color' => $brand['brand_primary_color'] ?? '#0070D0',
+                'platform_institution_id' => $brand['platform_institution_id'] ?? null,
                 'failure_reason' => $failureReason,
             ],
         ]);
@@ -334,7 +341,7 @@ class ExternalPayNowService
 
         $sent = $this->mail->sendTo(
             $payment->payer_email,
-            new ExternalPayNowReceiptMail($payment, $pdf, $filename),
+            new ExternalPayNowReceiptMail($payment, $pdf, $filename, $this->receiptBrandContext($payment)),
             ['event' => 'external_pay_now_receipt', 'reference' => $payment->external_reference]
         );
 
@@ -348,9 +355,14 @@ class ExternalPayNowService
 
     public function buildReceiptPdf(ExternalCoursePayment $payment): string
     {
+        $brand = $this->receiptBrandContext($payment);
+        $brandName = (string) ($brand['brand_name'] ?? 'F&R Rwanda');
+        $remaining = max(0, (int) $payment->course_price_rwf - (int) $payment->amount_rwf);
+        $statusLabel = $remaining > 0 ? 'PARTIAL PAID' : 'PAID';
+
         $lines = [
             '',
-            'F&R Rwanda — Payment Receipt',
+            $brandName . ' - Payment Receipt',
             '--------------------------------',
             'Reference: ' . $payment->external_reference,
             'Date: ' . optional($payment->paid_at)->format('Y-m-d H:i') . ' UTC',
@@ -360,14 +372,49 @@ class ExternalPayNowService
             'Course: ' . ($payment->course_title ?: ('#' . $payment->course_id)),
             'Course max: ' . number_format($payment->course_price_rwf) . ' ' . $payment->currency,
             'Amount paid: ' . number_format($payment->amount_rwf) . ' ' . $payment->currency,
-            'Provider: Mobile Money (external Pay Now)',
-            'Status: PAID',
-            '--------------------------------',
-            'This receipt is not linked to a learner login.',
-            'Thank you for paying with F&R Rwanda.',
         ];
 
-        return SimpleTextPdf::fromLines($lines, 'F&R Rwanda Receipt');
+        if ($remaining > 0) {
+            $lines[] = 'Remaining due: ' . number_format($remaining) . ' ' . $payment->currency;
+        }
+
+        $lines[] = 'Status: ' . $statusLabel;
+        $lines[] = 'Provider: Mobile Money (Pay Now)';
+
+        if (!empty($brand['momo_receiver_name']) || !empty($brand['display_momo_phone'])) {
+            $lines[] = 'Received by: ' . trim((string) ($brand['momo_receiver_name'] ?? $brandName));
+            if (!empty($brand['display_momo_phone'])) {
+                $lines[] = 'Owner MoMo: ' . $brand['display_momo_phone'];
+            }
+        }
+
+        $lines[] = '--------------------------------';
+        $lines[] = 'This receipt is not linked to a learner login.';
+        $lines[] = 'Thank you for paying with ' . $brandName . '.';
+
+        return SimpleTextPdf::fromLines($lines, $brandName . ' Receipt');
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function receiptBrandContext(ExternalCoursePayment $payment): array
+    {
+        $meta = is_array($payment->metadata) ? $payment->metadata : [];
+        if (!empty($meta['receiver_brand']) || !empty($meta['receiver_phone'])) {
+            return [
+                'brand_name' => (string) ($meta['receiver_brand'] ?? app(PaymentReceiverService::class)->mainBrandName()),
+                'brand_logo_url' => $meta['brand_logo_url'] ?? null,
+                'brand_primary_color' => (string) ($meta['brand_primary_color'] ?? '#0070D0'),
+                'momo_receiver_name' => (string) ($meta['receiver_name'] ?? ''),
+                'display_momo_phone' => (string) ($meta['receiver_phone'] ?? ''),
+                'source' => (string) ($meta['receiver_source'] ?? 'main'),
+            ];
+        }
+
+        $course = Course::query()->find($payment->course_id);
+
+        return app(PaymentReceiverService::class)->resolve($course);
     }
 
     /**

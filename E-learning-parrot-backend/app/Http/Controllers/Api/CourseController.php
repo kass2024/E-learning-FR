@@ -834,7 +834,7 @@ class CourseController extends Controller
         $paymentUrl = rtrim(\App\Support\FrontendUrl::base(), '/')
             . '/dashboard/learner/payment?course_id=' . (int) $course->id;
 
-        $receiver = \App\Models\SiteSetting::current()->paymentReceiverPayload();
+        $receiver = app(\App\Services\PaymentReceiverService::class)->resolve($course);
         $paymentDetails = [
             'currency' => 'RWF',
             'momo_name' => $receiver['momo_receiver_name'] ?? 'Kalisa Valens',
@@ -844,6 +844,7 @@ class CourseController extends Controller
             'bank_account_name' => $receiver['momo_receiver_name'] ?? 'Kalisa Valens',
             'bank_account_number' => '4015101074908',
             'whatsapp' => $receiver['display_whatsapp_phone'] ?? '+250 788 821 579',
+            'brand_name' => $receiver['brand_name'] ?? null,
             'note' => 'Envoyez la preuve de paiement pour confirmation.',
         ];
 

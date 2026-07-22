@@ -105,17 +105,14 @@ class PaymentController extends Controller
     public function paymentConfig(Request $request)
     {
         $mopayReady = $this->mopayPayments->isConfigured();
-        $settings = \App\Models\SiteSetting::current();
-        $receiver = $settings->paymentReceiverPayload();
-
-        $balance = null;
         $courseId = (int) $request->query('course_id', 0);
         $studentId = (int) $request->query('student_id', 0);
-        if ($courseId > 0 && $studentId > 0) {
-            $course = Course::find($courseId);
-            if ($course) {
-                $balance = $this->mopayPayments->balanceFor($course, $studentId);
-            }
+        $course = $courseId > 0 ? Course::find($courseId) : null;
+        $receiver = app(\App\Services\PaymentReceiverService::class)->resolve($course);
+
+        $balance = null;
+        if ($course && $studentId > 0) {
+            $balance = $this->mopayPayments->balanceFor($course, $studentId);
         }
 
         return response()->json([
@@ -125,6 +122,9 @@ class PaymentController extends Controller
             'default_mno' => config('services.mopay.default_mno', 'mtn'),
             'receiver_phone' => $receiver['display_momo_phone'],
             'receiver_name' => $receiver['momo_receiver_name'],
+            'brand_name' => $receiver['brand_name'],
+            'brand_logo_url' => $receiver['brand_logo_url'],
+            'receiver_source' => $receiver['source'],
             'allows_partial_amount' => true,
             'balance' => $balance,
             'guidelines' => [
